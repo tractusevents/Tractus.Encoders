@@ -7,16 +7,19 @@ public unsafe class NvencEncoderWrapper
     private NvEncDelegateWrapper methods;
     private nint cudaContextPtr;
     private NV_ENCODE_API_FUNCTION_LIST functionList;
+    private Guid selectedCodec;
+
+    public bool IsH264 => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_H264_GUID;
+    public bool IsHEVC => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_HEVC_GUID;
+    public bool IsAV1 => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_AV1_GUID;
+
 
     // TODO: Something useful with RequestedCodec.
     public RequestedCodec Codec { get; private set; }
 
     public NvencEncoderWrapper(
-        RequestedCodec codec,
         int cudaDeviceNumber = 0)
     {
-        this.Codec = codec;
-
         var nvencList = new NV_ENCODE_API_FUNCTION_LIST()
         {
             version = NvEncodeApiVersion.GetFunctionListVersion(),
@@ -41,8 +44,11 @@ public unsafe class NvencEncoderWrapper
         this.cudaContextPtr = pCtx;
     }
 
-    public void Initialize()
+    public void Initialize(
+        Guid codec)
     {
+        this.selectedCodec = codec;
+
         var openSessionParams = new NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS
         {
             version = NvEncodeApiVersion.GetFunctionListVersion(1),
@@ -63,7 +69,7 @@ public unsafe class NvencEncoderWrapper
 
         //var getGuids = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeGuids>(nvencList.nvEncGetEncodeGUIDs);
         var getGuidResult = this.methods.NvEncGetEncodeGUIDs(encoderPtr, guids, guidCount, ref guidCount);
-        var encoderGuid = guids.FirstOrDefault(x => x == EncodeGuids.NV_ENC_CODEC_H264_GUID);
+        var encoderGuid = guids.FirstOrDefault(x => x == codec);
 
         //var getEncodePresetCount = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodePresetCount>(nvencList.nvEncGetEncodePresetCount);
         var presetCountResult = this.methods.NvEncGetEncodePresetCount(encoderPtr, encoderGuid, out var encodePresetCount);
@@ -117,6 +123,34 @@ public unsafe class NvencEncoderWrapper
 
         //var initializeEncoder = Marshal.GetDelegateForFunctionPointer<NvEncInitializeEncoder>(nvencList.nvEncInitializeEncoder);
 
+
+        NV_ENC_CODEC_CONFIG codecConfig;
+
+        if (codec == EncodeGuids.NV_ENC_CODEC_H264_GUID)
+        {
+            codecConfig = new NV_ENC_CODEC_CONFIG
+            {
+                h264Config = new NV_ENC_CONFIG_H264
+                {
+
+                }
+            };
+        }
+        else if (codec == EncodeGuids.NV_ENC_CODEC_HEVC_GUID)
+        {
+            codecConfig = new NV_ENC_CODEC_CONFIG
+            {
+                hevcConfig = new NV_ENC_CONFIG_HEVC
+                {
+
+                }
+            };
+        }
+        else
+        {
+            throw new NotImplementedException();
+        }
+
         var nvEncConfig = new NV_ENC_CONFIG
         {
             version = NvEncodeApiVersion.NV_ENC_CONFIG_VER,
@@ -132,14 +166,7 @@ public unsafe class NvencEncoderWrapper
                 enableAQ = true,
                 zeroReorderDelay = true,
             },
-            encodeCodecConfig = new NV_ENC_CODEC_CONFIG
-            {
-                h264Config = new NV_ENC_CONFIG_H264
-                {
-
-                },
-
-            },
+            encodeCodecConfig = codecConfig, 
             reserved2 = new nint[64]
         };
 
@@ -277,6 +304,40 @@ public unsafe class NvencEncoderWrapper
         //var unlockInputBuffer = Marshal.GetDelegateForFunctionPointer<NvEncUnlockInputBuffer>(this.nvencList.nvEncUnlockInputBuffer);
         var unlockInputBufferResult = this.methods.NvEncUnlockInputBuffer(this.encoderPtr, this.inputBuffer);
 
+        NV_ENC_CODEC_PIC_PARAMS codecPicParams;
+
+        if (this.IsH264)
+        {
+            codecPicParams = new NV_ENC_CODEC_PIC_PARAMS
+            {
+                h264PicParams = new NV_ENC_PIC_PARAMS_H264
+                {
+
+                    h264ExtPicParams = new NV_ENC_PIC_PARAMS_H264_EXT
+                    {
+                        mvcPicParams = new NV_ENC_PIC_PARAMS_MVC
+                        {
+                            version = NvEncodeApiVersion.NV_ENC_PIC_PARAMS_MVC_VER,
+                        }
+                    }
+                }
+            };
+        }
+        else if (this.IsHEVC)
+        {
+            codecPicParams = new NV_ENC_CODEC_PIC_PARAMS
+            {
+                hevcPicParams = new NV_ENC_PIC_PARAMS_HEVC
+                {
+                    
+                }
+            };
+        }
+        else
+        {
+            throw new NotImplementedException("AV1 not implemented");
+        }
+
         var picParams = new NV_ENC_PIC_PARAMS
         {
             version = NvEncodeApiVersion.NV_ENC_PIC_PARAMS_VER,
@@ -291,20 +352,7 @@ public unsafe class NvencEncoderWrapper
             inputTimeStamp = 0,
             pictureStruct = NV_ENC_PIC_STRUCT.NV_ENC_PIC_STRUCT_FRAME,
             inputPitch = 1920,
-            codecPicParams = new NV_ENC_CODEC_PIC_PARAMS
-            {
-                h264PicParams = new NV_ENC_PIC_PARAMS_H264
-                {
-
-                    h264ExtPicParams = new NV_ENC_PIC_PARAMS_H264_EXT
-                    {
-                        mvcPicParams = new NV_ENC_PIC_PARAMS_MVC
-                        {
-                            version = NvEncodeApiVersion.NV_ENC_PIC_PARAMS_MVC_VER,
-                        }
-                    }
-                }
-            },
+            codecPicParams = codecPicParams,
         };
 
         //var encodePicture = Marshal.GetDelegateForFunctionPointer<NvEncEncodePicture>(this.nvencList.nvEncEncodePicture);

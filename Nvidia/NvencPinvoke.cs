@@ -53,6 +53,12 @@ public static class NvEncodeApiVersion
     public static uint NV_ENC_RECONFIGURE_PARAMS_VER => NVENCAPI_STRUCT_VERSION(2) | (1u << 31);
 }
 
+public static class Constants
+{
+    public const int MAX_NUM_VIEWS_MINUS_1 = 7;
+    public const int MULTIVIEW_MAX_NUM_REF_DISPLAY = 32;
+}
+
 public enum NV_ENC_TUNING_INFO
 {
     NV_ENC_TUNING_INFO_UNDEFINED = 0,                                     /**< Undefined tuningInfo. Invalid value for encoding. */
@@ -889,24 +895,179 @@ public enum NV_ENC_BIT_DEPTH
 }
 
 [StructLayout(LayoutKind.Explicit)]
-public struct NV_ENC_CODEC_PIC_PARAMS
+public unsafe struct NV_ENC_CODEC_PIC_PARAMS
 {
     [FieldOffset(0)]
     public NV_ENC_PIC_PARAMS_H264 h264PicParams;
 
-    //[FieldOffset(0)]
-    //public NV_ENC_PIC_PARAMS_HEVC hevcPicParams;
+    [FieldOffset(0)]
+    public NV_ENC_PIC_PARAMS_HEVC hevcPicParams;
 
     //[FieldOffset(0)]
     //public NV_ENC_PIC_PARAMS_AV1 av1PicParams;
 
     [FieldOffset(0)]
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-    public uint[] reserved;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
+    public fixed uint reserved[256];
 }
 
+[StructLayout(LayoutKind.Sequential)]
+public struct TestStruct
+{
+
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct NV_ENC_PIC_PARAMS_HEVC
+{
+    public uint displayPOCSyntax;             // [in]: Display POC syntax.
+    public uint refPicFlag;                   // [in]: 1 for reference picture.
+    public uint temporalId;                   // [in]: Temporal id.
+    public uint forceIntraRefreshWithFrameCnt; // [in]: Intra refresh frame count.
+
+    // Pack the following 32 bits (bitfields) into one uint:
+    // Bit 0: constrainedFrame (1 bit)
+    // Bit 1: sliceModeDataUpdate (1 bit)
+    // Bit 2: ltrMarkFrame (1 bit)
+    // Bit 3: ltrUseFrames (1 bit)
+    // Bit 4: temporalConfigUpdate (1 bit)
+    // Bits 5-31: reservedBitFields (27 bits; must be 0)
+    private uint bitField;
+    public bool constrainedFrame
+    {
+        get => (this.bitField & (1u << 0)) != 0;
+        set => this.bitField = value ? (this.bitField | (1u << 0)) : (this.bitField & ~(1u << 0));
+    }
+    public bool sliceModeDataUpdate
+    {
+        get => (this.bitField & (1u << 1)) != 0;
+        set => this.bitField = value ? (this.bitField | (1u << 1)) : (this.bitField & ~(1u << 1));
+    }
+    public bool ltrMarkFrame
+    {
+        get => (this.bitField & (1u << 2)) != 0;
+        set => this.bitField = value ? (this.bitField | (1u << 2)) : (this.bitField & ~(1u << 2));
+    }
+    public bool ltrUseFrames
+    {
+        get => (this.bitField & (1u << 3)) != 0;
+        set => this.bitField = value ? (this.bitField | (1u << 3)) : (this.bitField & ~(1u << 3));
+    }
+    public bool temporalConfigUpdate
+    {
+        get => (this.bitField & (1u << 4)) != 0;
+        set => this.bitField = value ? (this.bitField | (1u << 4)) : (this.bitField & ~(1u << 4));
+    }
+    // The remaining 27 bits (bits 5-31) are reserved and are not exposed.
+
+    public uint reserved1;                   // [in]: Reserved; must be 0.
+
+    // Pointer to an array of slice type data.
+    public IntPtr sliceTypeData;             // [in]: uint8_t* sliceTypeData.
+    public uint sliceTypeArrayCnt;           // [in]: Number of elements in sliceTypeData.
+
+    public uint sliceMode;                   // [in]: Slice mode.
+    public uint sliceModeData;               // [in]: Slice mode data.
+    public uint ltrMarkFrameIdx;             // [in]: LTR frame index.
+    public uint ltrUseFrameBitmap;           // [in]: Bitmap of LTR frame indices.
+    public uint ltrUsageMode;                // [in]: Reserved; must be 0.
+    public uint seiPayloadArrayCnt;          // [in]: Number of elements allocated in seiPayloadArray.
+    public uint reserved;                    // [in]: Reserved; must be 0.
+
+    // Pointer to an array of NV_ENC_SEI_PAYLOAD.
+    public IntPtr seiPayloadArray;           // [in]: NV_ENC_SEI_PAYLOAD*.
+
+    public NV_ENC_TIME_CODE timeCode;        // [in]: Time code SEI data.
+
+    public uint numTemporalLayers;           // [in]: Number of temporal layers (only set if temporalConfigUpdate == 1).
+    public uint viewId;                      // [in]: View id.
+
+    // Pointers to additional SEI structures.
+    public HEVC_3D_REFERENCE_DISPLAY_INFO p3DReferenceDisplayInfo;   // [in]: Pointer to HEVC_3D_REFERENCE_DISPLAY_INFO.
+    public CONTENT_LIGHT_LEVEL pMaxCll;                   // [in]: Pointer to CONTENT_LIGHT_LEVEL.
+    public IntPtr pMasteringDisplay;         // [in]: Pointer to MASTERING_DISPLAY_INFO.
+
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 234)]
+    public fixed uint reserved2[234];                 // [in]: Reserved array (234 uints), must be 0.
+
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 58)]
+    public fixed ulong reserved3[58];               // [in]: Reserved array of pointers (58 elements), must be NULL.
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct CONTENT_LIGHT_LEVEL
+{
+    public ushort maxContentLightLevel;
+    public ushort maxPicAverageLightLevel;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct HEVC_3D_REFERENCE_DISPLAY_INFO
+{
+    // The first 32 bits are packed as follows:
+    // Bit 0: refViewingDistanceFlag (1 bit)
+    // Bit 1: threeDimensionalReferenceDisplaysExtensionFlag (1 bit)
+    // Bits 2-31: reserved (30 bits; must be 0)
+    private uint packedFlags;
+
+    public bool RefViewingDistanceFlag
+    {
+        get => (this.packedFlags & 0x1u) != 0;
+        set => this.packedFlags = value ? (this.packedFlags | 0x1u) : (this.packedFlags & ~0x1u);
+    }
+
+    public bool ThreeDimensionalReferenceDisplaysExtensionFlag
+    {
+        get => (this.packedFlags & 0x2u) != 0;
+        set => this.packedFlags = value ? (this.packedFlags | 0x2u) : (this.packedFlags & ~0x2u);
+    }
+
+    // Next fields:
+    public int precRefDisplayWidth;         // Exponent for refDisplayWidth.
+    public int precRefViewingDist;          // Exponent for refViewingDist.
+    public int numRefDisplaysMinus1;        // (numRefDisplays - 1)
+
+    public fixed int leftViewId[Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY];
+    public fixed int rightViewId[Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY];
+    public fixed int exponentRefDisplayWidth[Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY];
+    public fixed int mantissaRefDisplayWidth[Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY];
+    public fixed int exponentRefViewingDistance[Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY];
+    public fixed int mantissaRefViewingDistance[Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY];
+    public fixed int numSampleShiftPlus512[Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY];
+
+    public fixed byte additionalShiftPresentFlag[Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY];
+
+    public fixed uint reserved2[4];
+
+
+    //// Arrays of size MULTIVIEW_MAX_NUM_REF_DISPLAY (32):
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY)]
+    //public int[] leftViewId;                // Left view IDs.
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY)]
+    //public int[] rightViewId;               // Right view IDs.
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY)]
+    //public int[] exponentRefDisplayWidth;   // Exponent part of ref display width.
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY)]
+    //public int[] mantissaRefDisplayWidth;   // Mantissa part of ref display width.
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY)]
+    //public int[] exponentRefViewingDistance;// Exponent part of ref viewing distance.
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY)]
+    //public int[] mantissaRefViewingDistance;// Mantissa part of ref viewing distance.
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY)]
+    //public int[] numSampleShiftPlus512;     // Additional horizontal shift per reference display.
+
+    //// Array of additionalShiftPresentFlag (32 bytes)
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MULTIVIEW_MAX_NUM_REF_DISPLAY)]
+    //public byte[] additionalShiftPresentFlag;
+
+    //// Reserved array of 4 uints.
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    //public uint[] reserved2;
+}
+
+
 [StructLayout(LayoutKind.Explicit)]
-public struct NV_ENC_PIC_PARAMS_H264_EXT
+public unsafe struct NV_ENC_PIC_PARAMS_H264_EXT
 {
     // MVC picture parameters.
     [FieldOffset(0)]
@@ -914,8 +1075,8 @@ public struct NV_ENC_PIC_PARAMS_H264_EXT
 
     // Reserved array of 32 uints.
     [FieldOffset(0)]
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-    public uint[] reserved1;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+    public fixed uint reserved1[32];
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -927,7 +1088,7 @@ public struct NV_ENC_SEI_PAYLOAD
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct NV_ENC_PIC_PARAMS_MVC
+public unsafe struct NV_ENC_PIC_PARAMS_MVC
 {
     public uint version;   // Must be set to NV_ENC_PIC_PARAMS_MVC_VER.
     public uint viewID;    // Specifies the view ID for the current input.
@@ -935,17 +1096,17 @@ public struct NV_ENC_PIC_PARAMS_MVC
     public uint priorityID;// Specifies the priority ID (reserved, ignored).
 
     // Reserved array of 12 uints, must be set to 0.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 12)]
-    public uint[] reserved1;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 12)]
+    public fixed uint reserved1[12];
 
     // Reserved array of 8 pointers, must be set to NULL.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
-    public IntPtr[] reserved2;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+    public fixed ulong reserved2[8];
 }
 
 
 [StructLayout(LayoutKind.Sequential)]
-public struct NV_ENC_PIC_PARAMS_H264
+public unsafe struct NV_ENC_PIC_PARAMS_H264
 {
     public uint displayPOCSyntax;              // Specifies the display POC syntax.
     public uint reserved3;                     // Reserved; must be 0.
@@ -999,12 +1160,12 @@ public struct NV_ENC_PIC_PARAMS_H264
     public NV_ENC_TIME_CODE timeCode;                   // Time-code for picture timing SEI.
 
     // Reserved array of 202 uints.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 202)]
-    public uint[] reserved;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 202)]
+    public fixed uint reserved[202];
 
     // Reserved array of 61 pointers.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 61)]
-    public IntPtr[] reserved2;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 61)]
+    public fixed ulong reserved2[61];
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -1149,12 +1310,18 @@ public struct NV_ENC_CLOCK_TIMESTAMP_SET
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct NV_ENC_TIME_CODE
+public unsafe struct NV_ENC_TIME_CODE
 {
     public NV_ENC_DISPLAY_PIC_STRUCT displayPicStruct;
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
-    public NV_ENC_CLOCK_TIMESTAMP_SET[] clockTimestamp;
+    // So we can't do this, and for a union we need to be absolutely sure
+    // we have blittable fields. The marshaller can't deal with managed
+    // arrays.
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+    //public fixed NV_ENC_CLOCK_TIMESTAMP_SET clockTimestamp[3];
+    public NV_ENC_CLOCK_TIMESTAMP_SET clockTimestamp0;
+    public NV_ENC_CLOCK_TIMESTAMP_SET clockTimestamp1;
+    public NV_ENC_CLOCK_TIMESTAMP_SET clockTimestamp2;
 
     public uint skipClockTimestampInsertion;
 }
@@ -1401,11 +1568,6 @@ public struct NV_ENC_RC_PARAMS
     public uint reserved1;
 }
 
-public static class Constants
-{
-    public const int MAX_NUM_VIEWS_MINUS_1 = 7;
-}
-
 [StructLayout(LayoutKind.Sequential)]
 public struct NV_ENC_CONFIG
 {
@@ -1423,15 +1585,198 @@ public struct NV_ENC_CONFIG
     public nint[] reserved2; // 64
 }
 
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct NV_ENC_CONFIG_HEVC
+{
+    public uint level;         // Specifies the level of the encoded bitstream.
+    public uint tier;          // Specifies the level tier of the encoded bitstream.
+    public NV_ENC_HEVC_CUSIZE minCUSize;   // Minimum luma coding unit size.
+    public NV_ENC_HEVC_CUSIZE maxCUSize;   // Maximum luma coding unit size.
+
+    // The following bitfields (total 32 bits) are packed into one uint.
+    // Bit assignments:
+    // Bit  0: useConstrainedIntraPred (1 bit)
+    // Bit  1: disableDeblockAcrossSliceBoundary (1 bit)
+    // Bit  2: outputBufferingPeriodSEI (1 bit)
+    // Bit  3: outputPictureTimingSEI (1 bit)
+    // Bit  4: outputAUD (1 bit)
+    // Bit  5: enableLTR (1 bit)
+    // Bit  6: disableSPSPPS (1 bit)
+    // Bit  7: repeatSPSPPS (1 bit)
+    // Bit  8: enableIntraRefresh (1 bit)
+    // Bits 9-10: chromaFormatIDC (2 bits)
+    // Bits 11-13: reserved3 (3 bits)
+    // Bit 14: enableFillerDataInsertion (1 bit)
+    // Bit 15: enableConstrainedEncoding (1 bit)
+    // Bit 16: enableAlphaLayerEncoding (1 bit)
+    // Bit 17: singleSliceIntraRefresh (1 bit)
+    // Bit 18: outputRecoveryPointSEI (1 bit)
+    // Bit 19: outputTimeCodeSEI (1 bit)
+    // Bit 20: enableTemporalSVC (1 bit)
+    // Bit 21: enableMVHEVC (1 bit)
+    // Bit 22: outputHevc3DReferenceDisplayInfo (1 bit)
+    // Bit 23: outputMaxCll (1 bit)
+    // Bit 24: outputMasteringDisplay (1 bit)
+    // Bits 25-31: reserved (7 bits)
+    private uint bitField0;
+
+    public bool useConstrainedIntraPred
+    {
+        get => (this.bitField0 & (1u << 0)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 0)) : (this.bitField0 & ~(1u << 0));
+    }
+    public bool disableDeblockAcrossSliceBoundary
+    {
+        get => (this.bitField0 & (1u << 1)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 1)) : (this.bitField0 & ~(1u << 1));
+    }
+    public bool outputBufferingPeriodSEI
+    {
+        get => (this.bitField0 & (1u << 2)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 2)) : (this.bitField0 & ~(1u << 2));
+    }
+    public bool outputPictureTimingSEI
+    {
+        get => (this.bitField0 & (1u << 3)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 3)) : (this.bitField0 & ~(1u << 3));
+    }
+    public bool outputAUD
+    {
+        get => (this.bitField0 & (1u << 4)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 4)) : (this.bitField0 & ~(1u << 4));
+    }
+    public bool enableLTR
+    {
+        get => (this.bitField0 & (1u << 5)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 5)) : (this.bitField0 & ~(1u << 5));
+    }
+    public bool disableSPSPPS
+    {
+        get => (this.bitField0 & (1u << 6)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 6)) : (this.bitField0 & ~(1u << 6));
+    }
+    public bool repeatSPSPPS
+    {
+        get => (this.bitField0 & (1u << 7)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 7)) : (this.bitField0 & ~(1u << 7));
+    }
+    public bool enableIntraRefresh
+    {
+        get => (this.bitField0 & (1u << 8)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 8)) : (this.bitField0 & ~(1u << 8));
+    }
+    public byte chromaFormatIDC
+    {
+        get => (byte)((this.bitField0 >> 9) & 0x3);
+        set => this.bitField0 = (this.bitField0 & ~(0x3u << 9)) | (((uint)value & 0x3) << 9);
+    }
+    public byte reserved3
+    {
+        get => (byte)((this.bitField0 >> 11) & 0x7);
+        set => this.bitField0 = (this.bitField0 & ~(0x7u << 11)) | (((uint)value & 0x7) << 11);
+    }
+    public bool enableFillerDataInsertion
+    {
+        get => (this.bitField0 & (1u << 14)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 14)) : (this.bitField0 & ~(1u << 14));
+    }
+    public bool enableConstrainedEncoding
+    {
+        get => (this.bitField0 & (1u << 15)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 15)) : (this.bitField0 & ~(1u << 15));
+    }
+    public bool enableAlphaLayerEncoding
+    {
+        get => (this.bitField0 & (1u << 16)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 16)) : (this.bitField0 & ~(1u << 16));
+    }
+    public bool singleSliceIntraRefresh
+    {
+        get => (this.bitField0 & (1u << 17)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 17)) : (this.bitField0 & ~(1u << 17));
+    }
+    public bool outputRecoveryPointSEI
+    {
+        get => (this.bitField0 & (1u << 18)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 18)) : (this.bitField0 & ~(1u << 18));
+    }
+    public bool outputTimeCodeSEI
+    {
+        get => (this.bitField0 & (1u << 19)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 19)) : (this.bitField0 & ~(1u << 19));
+    }
+    public bool enableTemporalSVC
+    {
+        get => (this.bitField0 & (1u << 20)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 20)) : (this.bitField0 & ~(1u << 20));
+    }
+    public bool enableMVHEVC
+    {
+        get => (this.bitField0 & (1u << 21)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 21)) : (this.bitField0 & ~(1u << 21));
+    }
+    public bool outputHevc3DReferenceDisplayInfo
+    {
+        get => (this.bitField0 & (1u << 22)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 22)) : (this.bitField0 & ~(1u << 22));
+    }
+    public bool outputMaxCll
+    {
+        get => (this.bitField0 & (1u << 23)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 23)) : (this.bitField0 & ~(1u << 23));
+    }
+    public bool outputMasteringDisplay
+    {
+        get => (this.bitField0 & (1u << 24)) != 0;
+        set => this.bitField0 = value ? (this.bitField0 | (1u << 24)) : (this.bitField0 & ~(1u << 24));
+    }
+    public byte reservedBitFields
+    {
+        get => (byte)((this.bitField0 >> 25) & 0x7F);
+        set => this.bitField0 = (this.bitField0 & ~(0x7Fu << 25)) | (((uint)value & 0x7F) << 25);
+    }
+
+    // Remaining fields:
+    public uint idrPeriod;               // IDR interval.
+    public uint intraRefreshPeriod;      // Intra refresh interval.
+    public uint intraRefreshCnt;         // Intra refresh frame count.
+    public uint maxNumRefFramesInDPB;    // Maximum number of reference frames.
+    public uint ltrNumFrames;            // LTR frame guidance.
+    public uint vpsId;                   // VPS id.
+    public uint spsId;                   // SPS id.
+    public uint ppsId;                   // PPS id.
+    public uint sliceMode;               // Slice mode.
+    public uint sliceModeData;           // Slice mode data.
+    public uint maxTemporalLayersMinus1; // Maximum temporal layers minus 1.
+
+    public NV_ENC_CONFIG_H264_AND_HEVC_VUI_PARAMETERS hevcVUIParameters; // HEVC VUI parameters.
+    public uint ltrTrustMode;            // LTR trust mode.
+    public NV_ENC_BFRAME_REF_MODE useBFramesAsRef; // B-Frame as reference mode.
+    public NV_ENC_NUM_REF_FRAMES numRefL0; // Number of reference frames in L0.
+    public NV_ENC_NUM_REF_FRAMES numRefL1; // Number of reference frames in L1.
+    public NV_ENC_TEMPORAL_FILTER_LEVEL tfLevel; // Temporal filter level.
+    public uint disableDeblockingFilterIDC;  // Deblocking filter mode.
+    public NV_ENC_BIT_DEPTH outputBitDepth;  // Output bit depth.
+    public NV_ENC_BIT_DEPTH inputBitDepth;   // Input bit depth.
+    public uint numTemporalLayers;       // Number of temporal layers.
+    public uint numViews;                // Number of views for MVHEVC.
+
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 208)]
+    public fixed uint reserved1[208];             // Reserved array, must be zero.
+
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+    public fixed ulong reserved2[64];           // Reserved array of pointers, must be null.
+
+}
+
 [StructLayout(LayoutKind.Explicit)]
-public struct NV_ENC_CODEC_CONFIG
+public unsafe struct NV_ENC_CODEC_CONFIG
 {
     [FieldOffset(0)]
     public NV_ENC_CONFIG_H264 h264Config;
 
-    // TODO: This shit.
-    //[FieldOffset(0)]
-    //public NV_ENC_CONFIG_HEVC hevcConfig;
+    [FieldOffset(0)]
+    public NV_ENC_CONFIG_HEVC hevcConfig;
 
     //[FieldOffset(0)]
     //public NV_ENC_CONFIG_AV1 av1Config;
@@ -1444,12 +1789,12 @@ public struct NV_ENC_CODEC_CONFIG
 
     // Reserved array occupies the same space.
     [FieldOffset(0)]
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 320)]
-    public uint[] reserved;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 320)]
+    public fixed uint reserved[320];
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct NV_ENC_CONFIG_H264
+public unsafe struct NV_ENC_CONFIG_H264
 {
     // Bitfields combined into a single 32-bit integer.
     private uint bitField0;
@@ -1585,7 +1930,7 @@ public struct NV_ENC_CONFIG_H264
     public uint maxNumRefFrames;
     public uint sliceMode;
     public uint sliceModeData;
-    public NV_ENC_CONFIG_H264_VUI_PARAMETERS h264VUIParameters;
+    public NV_ENC_CONFIG_H264_AND_HEVC_VUI_PARAMETERS h264VUIParameters;
     public uint ltrNumFrames;
     public uint ltrTrustMode;
     public uint chromaFormatIDC;
@@ -1597,15 +1942,17 @@ public struct NV_ENC_CONFIG_H264
     public NV_ENC_BIT_DEPTH inputBitDepth;
     public NV_ENC_TEMPORAL_FILTER_LEVEL tfLevel;
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 264)]
-    public uint[] reserved1;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 264)]
+    public fixed uint reserved1[264];
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-    public IntPtr[] reserved2;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+    public fixed ulong reserved2[64];
 }
 
+// NOTE: This type is also used for HEVC.
+//typedef NV_ENC_CONFIG_H264_VUI_PARAMETERS NV_ENC_CONFIG_HEVC_VUI_PARAMETERS;
 [StructLayout(LayoutKind.Sequential)]
-public struct NV_ENC_CONFIG_H264_VUI_PARAMETERS
+public unsafe struct NV_ENC_CONFIG_H264_AND_HEVC_VUI_PARAMETERS
 {
     public uint overscanInfoPresentFlag;       // Specifies if overscanInfo is present.
     public uint overscanInfo;                  // Overscan information.
@@ -1623,8 +1970,10 @@ public struct NV_ENC_CONFIG_H264_VUI_PARAMETERS
     public uint timingInfoPresentFlag;         // Indicates if timing info is present.
     public uint numUnitInTicks;                // Number of time units of the clock.
     public uint timeScale;                     // Frequency of the clock.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 12)]
-    public uint[] reserved;                    // Reserved array (must be set to 0).
+
+
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 12)]
+    public fixed uint reserved[12];                    // Reserved array (must be set to 0).
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -1915,106 +2264,6 @@ public struct NV_ENCODE_API_FUNCTION_LIST
     // Reserved array (275 pointers) which must be set to null.
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 275)]
     public IntPtr[] reserved2;
-}
-
-/// <summary>
-/// Used to wrap unmanaged delegates for the NVENC API into
-/// managed methods.
-/// </summary>
-public class NvEncDelegateWrapper
-{
-    // Public  fields/properties for the NVENC functions.
-    public NvEncOpenEncodeSessionEx NvEncOpenEncodeSessionEx { get; }
-    public NvEncGetEncodeGuidCount NvEncGetEncodeGUIDCount { get; }
-    public NvEncGetEncodeProfileGUIDCount NvEncGetEncodeProfileGUIDCount { get; }
-    public NvEncGetEncodeProfileGUIDs NvEncGetEncodeProfileGUIDs { get; }
-    public NvEncGetEncodeGuids NvEncGetEncodeGUIDs { get; }
-    public NvEncGetInputFormatCount NvEncGetInputFormatCount { get; }
-    public NvEncGetInputFormats NvEncGetInputFormats { get; }
-    public NvEncGetEncodeCaps NvEncGetEncodeCaps { get; }
-    public NvEncGetEncodePresetCount NvEncGetEncodePresetCount { get; }
-    public NvEncGetEncodePresetGUIDs NvEncGetEncodePresetGUIDs { get; }
-    //public NvEncGetEncodePresetConfig NvEncGetEncodePresetConfig { get; }
-    public NvEncInitializeEncoder NvEncInitializeEncoder { get; }
-    public NvEncCreateInputBuffer NvEncCreateInputBuffer { get; }
-    public NvEncDestroyInputBuffer NvEncDestroyInputBuffer { get; }
-    public NvEncCreateBitstreamBuffer NvEncCreateBitstreamBuffer { get; }
-    public NvEncDestroyBitstreamBuffer NvEncDestroyBitstreamBuffer { get; }
-    public NvEncEncodePicture NvEncEncodePicture { get; }
-    public NvEncLockBitstream NvEncLockBitstream { get; }
-    public NvEncUnlockBitstream NvEncUnlockBitstream { get; }
-    public NvEncLockInputBuffer NvEncLockInputBuffer { get; }
-    public NvEncUnlockInputBuffer NvEncUnlockInputBuffer { get; }
-    //public NvEncGetEncodeStats NvEncGetEncodeStats { get; }
-    //public NvEncGetSequenceParams NvEncGetSequenceParams { get; }
-    //public NvEncRegisterAsyncEvent NvEncRegisterAsyncEvent { get; }
-    //public NvEncUnregisterAsyncEvent NvEncUnregisterAsyncEvent { get; }
-    //public NvEncMapInputResource NvEncMapInputResource { get; }
-    //public NvEncUnmapInputResource NvEncUnmapInputResource { get; }
-    public NvEncDestroyEncoder NvEncDestroyEncoder { get; }
-    public NvEncInvalidateRefFrames NvEncInvalidateRefFrames { get; }
-    //public NvEncRegisterResource NvEncRegisterResource { get; }
-    //public NvEncUnregisterResource NvEncUnregisterResource { get; }
-    public NvEncReconfigureEncoder NvEncReconfigureEncoder { get; }
-    //public NvEncCreateMVBuffer NvEncCreateMVBuffer { get; }
-    //public NvEncDestroyMVBuffer NvEncDestroyMVBuffer { get; }
-    //public NvEncRunMotionEstimationOnly NvEncRunMotionEstimationOnly { get; }
-    public NvEncGetLastErrorString NvEncGetLastErrorString { get; }
-    //public NvEncSetIOCudaStreams NvEncSetIOCudaStreams { get; }
-    public NvEncGetEncodePresetConfigEx NvEncGetEncodePresetConfigEx { get; }
-    //public NvEncGetSequenceParamEx NvEncGetSequenceParamEx { get; }
-    //public NvEncRestoreEncoderState NvEncRestoreEncoderState { get; }
-    //public NvEncLookaheadPicture NvEncLookaheadPicture { get; }
-
-    private NV_ENCODE_API_FUNCTION_LIST functionList;
-
-    // Constructor that takes an NV_ENCODE_API_FUNCTION_LIST and converts the pointers to s.
-    public NvEncDelegateWrapper(ref NV_ENCODE_API_FUNCTION_LIST functionList)
-    {
-        this.functionList = functionList;
-        // Use Marshal.GetDelegateForFunctionPointer to convert each function pointer.
-        this.NvEncOpenEncodeSessionEx = Marshal.GetDelegateForFunctionPointer<NvEncOpenEncodeSessionEx>(functionList.nvEncOpenEncodeSessionEx);
-        this.NvEncGetEncodeGUIDCount = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeGuidCount>(functionList.nvEncGetEncodeGUIDCount);
-        this.NvEncGetEncodeProfileGUIDCount = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeProfileGUIDCount>(functionList.nvEncGetEncodeProfileGUIDCount);
-        this.NvEncGetEncodeProfileGUIDs = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeProfileGUIDs>(functionList.nvEncGetEncodeProfileGUIDs);
-        this.NvEncGetEncodeGUIDs = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeGuids>(functionList.nvEncGetEncodeGUIDs);
-        this.NvEncGetInputFormatCount = Marshal.GetDelegateForFunctionPointer<NvEncGetInputFormatCount>(functionList.nvEncGetInputFormatCount);
-        this.NvEncGetInputFormats = Marshal.GetDelegateForFunctionPointer<NvEncGetInputFormats>(functionList.nvEncGetInputFormats);
-        this.NvEncGetEncodeCaps = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeCaps>(functionList.nvEncGetEncodeCaps);
-        this.NvEncGetEncodePresetCount = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodePresetCount>(functionList.nvEncGetEncodePresetCount);
-        this.NvEncGetEncodePresetGUIDs = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodePresetGUIDs>(functionList.nvEncGetEncodePresetGUIDs);
-        //this.NvEncGetEncodePresetConfig = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodePresetConfig>(functionList.nvEncGetEncodePresetConfig);
-        this.NvEncInitializeEncoder = Marshal.GetDelegateForFunctionPointer<NvEncInitializeEncoder>(functionList.nvEncInitializeEncoder);
-        this.NvEncCreateInputBuffer = Marshal.GetDelegateForFunctionPointer<NvEncCreateInputBuffer>(functionList.nvEncCreateInputBuffer);
-        this.NvEncDestroyInputBuffer = Marshal.GetDelegateForFunctionPointer<NvEncDestroyInputBuffer>(functionList.nvEncDestroyInputBuffer);
-        this.NvEncCreateBitstreamBuffer = Marshal.GetDelegateForFunctionPointer<NvEncCreateBitstreamBuffer>(functionList.nvEncCreateBitstreamBuffer);
-        this.NvEncDestroyBitstreamBuffer = Marshal.GetDelegateForFunctionPointer<NvEncDestroyBitstreamBuffer>(functionList.nvEncDestroyBitstreamBuffer);
-        this.NvEncEncodePicture = Marshal.GetDelegateForFunctionPointer<NvEncEncodePicture>(functionList.nvEncEncodePicture);
-        this.NvEncLockBitstream = Marshal.GetDelegateForFunctionPointer<NvEncLockBitstream>(functionList.nvEncLockBitstream);
-        this.NvEncUnlockBitstream = Marshal.GetDelegateForFunctionPointer<NvEncUnlockBitstream>(functionList.nvEncUnlockBitstream);
-        this.NvEncLockInputBuffer = Marshal.GetDelegateForFunctionPointer<NvEncLockInputBuffer>(functionList.nvEncLockInputBuffer);
-        this.NvEncUnlockInputBuffer = Marshal.GetDelegateForFunctionPointer<NvEncUnlockInputBuffer>(functionList.nvEncUnlockInputBuffer);
-        //this.NvEncGetEncodeStats = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeStats>(functionList.nvEncGetEncodeStats);
-        //this.NvEncGetSequenceParams = Marshal.GetDelegateForFunctionPointer<NvEncGetSequenceParams>(functionList.nvEncGetSequenceParams);
-        //this.NvEncRegisterAsyncEvent = Marshal.GetDelegateForFunctionPointer<NvEncRegisterAsyncEvent>(functionList.nvEncRegisterAsyncEvent);
-        //this.NvEncUnregisterAsyncEvent = Marshal.GetDelegateForFunctionPointer<NvEncUnregisterAsyncEvent>(functionList.nvEncUnregisterAsyncEvent);
-        //this.NvEncMapInputResource = Marshal.GetDelegateForFunctionPointer<NvEncMapInputResource>(functionList.nvEncMapInputResource);
-        //this.NvEncUnmapInputResource = Marshal.GetDelegateForFunctionPointer<NvEncUnmapInputResource>(functionList.nvEncUnmapInputResource);
-        this.NvEncDestroyEncoder = Marshal.GetDelegateForFunctionPointer<NvEncDestroyEncoder>(functionList.nvEncDestroyEncoder);
-        this.NvEncInvalidateRefFrames = Marshal.GetDelegateForFunctionPointer<NvEncInvalidateRefFrames>(functionList.nvEncInvalidateRefFrames);
-        //this.NvEncRegisterResource = Marshal.GetDelegateForFunctionPointer<NvEncRegisterResource>(functionList.nvEncRegisterResource);
-        //this.NvEncUnregisterResource = Marshal.GetDelegateForFunctionPointer<NvEncUnregisterResource>(functionList.nvEncUnregisterResource);
-        this.NvEncReconfigureEncoder = Marshal.GetDelegateForFunctionPointer<NvEncReconfigureEncoder>(functionList.nvEncReconfigureEncoder);
-        //this.NvEncCreateMVBuffer = Marshal.GetDelegateForFunctionPointer<NvEncCreateMVBuffer>(functionList.nvEncCreateMVBuffer);
-        //this.NvEncDestroyMVBuffer = Marshal.GetDelegateForFunctionPointer<NvEncDestroyMVBuffer>(functionList.nvEncDestroyMVBuffer);
-        //this.NvEncRunMotionEstimationOnly = Marshal.GetDelegateForFunctionPointer<NvEncRunMotionEstimationOnly>(functionList.nvEncRunMotionEstimationOnly);
-        this.NvEncGetLastErrorString = Marshal.GetDelegateForFunctionPointer<NvEncGetLastErrorString>(functionList.nvEncGetLastErrorString);
-        //this.NvEncSetIOCudaStreams = Marshal.GetDelegateForFunctionPointer<NvEncSetIOCudaStreams>(functionList.nvEncSetIOCudaStreams);
-        this.NvEncGetEncodePresetConfigEx = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodePresetConfigEx>(functionList.nvEncGetEncodePresetConfigEx);
-        //this.NvEncGetSequenceParamEx = Marshal.GetDelegateForFunctionPointer<NvEncGetSequenceParamEx>(functionList.nvEncGetSequenceParamEx);
-        //this.NvEncRestoreEncoderState = Marshal.GetDelegateForFunctionPointer<NvEncRestoreEncoderState>(functionList.nvEncRestoreEncoderState);
-        //this.NvEncLookaheadPicture = Marshal.GetDelegateForFunctionPointer<NvEncLookaheadPicture>(functionList.nvEncLookaheadPicture);
-    }
 }
 
 [StructLayout(LayoutKind.Sequential)]
