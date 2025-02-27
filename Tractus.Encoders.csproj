@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Title>Encoder Wrappers for .NET Core</Title>
+    <Version>2025.2.24.1</Version>
+    <Description>Provides a wrapper to NVENC, OpenH264.</Description>
+    <PackageProjectUrl>https://github.com/tractusevents/Tractus.Encoders</PackageProjectUrl>
+    <PackageIcon>logo.png</PackageIcon>
+    <RepositoryUrl>https://github.com/tractusEvents/Tractus.Encoders</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>ndi, network device interface</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="H264Sharp" Version="1.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="OpenH264\" />
+  </ItemGroup>
+
+
+
+</Project>
