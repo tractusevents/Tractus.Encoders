@@ -13,10 +13,6 @@ public unsafe class NvencEncoderWrapper
     public bool IsHEVC => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_HEVC_GUID;
     public bool IsAV1 => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_AV1_GUID;
 
-
-    // TODO: Something useful with RequestedCodec.
-    public RequestedCodec Codec { get; private set; }
-
     public NvencEncoderWrapper(
         int cudaDeviceNumber = 0)
     {
@@ -142,7 +138,12 @@ public unsafe class NvencEncoderWrapper
             {
                 hevcConfig = new NV_ENC_CONFIG_HEVC
                 {
-
+                    enableLTR = false,
+                    repeatSPSPPS = true,
+                    idrPeriod = 1,
+                    intraRefreshPeriod = 1,
+                    useBFramesAsRef = NV_ENC_BFRAME_REF_MODE.NV_ENC_BFRAME_REF_MODE_DISABLED,
+                    
                 }
             };
         }
@@ -162,7 +163,7 @@ public unsafe class NvencEncoderWrapper
             {
                 version = NvEncodeApiVersion.NV_ENC_RC_PARAMS_VER,
                 rateControlMode = NV_ENC_PARAMS_RC_MODE.NV_ENC_PARAMS_RC_CBR,
-                averageBitRate = 8_000_000,
+                averageBitRate = 80_000_000,
                 enableAQ = true,
                 zeroReorderDelay = true,
             },
