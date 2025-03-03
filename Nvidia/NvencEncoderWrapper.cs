@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Serilog;
+using System;
 using System.Runtime.InteropServices;
 
 namespace Tractus.Encoders.Nvidia;
@@ -21,29 +22,47 @@ public unsafe class NvencEncoderWrapper
             version = NvEncodeApiVersion.GetFunctionListVersion(),
         };
 
+        Log.Logger.Debug("Attempting to get the NVENC function list...");
         var status = NvencNativeApi.NvEncodeAPICreateInstance(ref nvencList);
 
         if (status != NVENCSTATUS.NV_ENC_SUCCESS)
         {
-            throw new Exception();
+            throw new Exception("NVENC Init failed - native function list could not be loaded.");
         }
 
         this.methods = new NvEncDelegateWrapper(ref nvencList);
 
         var initCudaResult = CudaNative.cuInit(0);
+        Log.Logger.Debug($"cuInit(0): {initCudaResult}");
+        if(initCudaResult != CUresult.CUDA_SUCCESS)
+        {
+            throw new Exception("Could not init CUDA. Turn on debug logging and try again.");
+        }
 
         var getDeviceResult = CudaNative.cuDeviceGet(out cudaDeviceNumber, 0);
+        Log.Logger.Debug($"cuDeviceGet: {getDeviceResult}, CUDA Device #: {cudaDeviceNumber}");
+        if (getDeviceResult != CUresult.CUDA_SUCCESS)
+        {
+            throw new Exception("Could not get CUDA device. Turn on debug logging and try again.");
+        }
 
         var ctxResult = CudaNative.cuCtxCreate(out var pCtx, 0, cudaDeviceNumber);
+        Log.Logger.Debug($"cuCtxCreate: {ctxResult}, pCtx: {pCtx}");
+        if (ctxResult != CUresult.CUDA_SUCCESS)
+        {
+            throw new Exception("Could not open a CUDA context. Turn on debug logging and try again.");
+        }
 
         this.functionList = nvencList;
         this.cudaContextPtr = pCtx;
     }
 
+    // TODO: We need to complete the close/dispose the encoder properly so we can test it at launch.
     public void Initialize(
         Guid codec)
     {
         this.selectedCodec = codec;
+        Log.Logger.Debug($"NVENC selecting codec {codec} ({(this.IsH264 ? "H264" : this.IsHEVC ? "H265" : this.IsAV1 ? "AV1" : "????")})");
 
         var openSessionParams = new NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS
         {
@@ -58,6 +77,13 @@ public unsafe class NvencEncoderWrapper
 
         //var openSessionEx = Marshal.GetDelegateForFunctionPointer<NvEncOpenEncodeSessionEx>(nvencList.nvEncOpenEncodeSessionEx);
         var cudaNvencSessionResult = this.methods.NvEncOpenEncodeSessionEx(ref openSessionParams, out var encoderPtr);
+        Log.Logger.Debug($"NvEncOpenEncodeSessionEx: {cudaNvencSessionResult}");
+
+        if(cudaNvencSessionResult != NVENCSTATUS.NV_ENC_SUCCESS)
+        {
+            var lastError = this.methods.NvEncGetLastErrorString(encoderPtr);
+            throw new Exception($"Could not start an NVENC session.\r\n\r\nResult code: {cudaNvencSessionResult}\r\n{lastError}");
+        }
 
         //var getEncodeGuidCount = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeGuidCount>(nvencList.nvEncGetEncodeGUIDCount);
         var guidCountResult = this.methods.NvEncGetEncodeGUIDCount(encoderPtr, out var guidCount);
@@ -118,7 +144,6 @@ public unsafe class NvencEncoderWrapper
         var getEncoderCapsResult = this.methods.NvEncGetEncodeCaps(encoderPtr, encoderGuid, ref capsParam, out var capsVal);
 
         //var initializeEncoder = Marshal.GetDelegateForFunctionPointer<NvEncInitializeEncoder>(nvencList.nvEncInitializeEncoder);
-
 
         NV_ENC_CODEC_CONFIG codecConfig;
 
@@ -196,6 +221,7 @@ public unsafe class NvencEncoderWrapper
         };
 
         var initializeEncoderResult = this.methods.NvEncInitializeEncoder(encoderPtr, ref createEncoderParams);
+        Log.Logger.Debug($"NvEncInitializeEncoder: {initializeEncoderResult}");
 
         //var createInputBuffer = Marshal.GetDelegateForFunctionPointer<NvEncCreateInputBuffer>(nvencList.nvEncCreateInputBuffer);
 
@@ -212,7 +238,8 @@ public unsafe class NvencEncoderWrapper
         };
 
         var createInputBufferResult = this.methods.NvEncCreateInputBuffer(encoderPtr, ref createInputBufferParams);
-        
+        Log.Logger.Debug($"NvEncCreateInputBuffer: {createInputBufferResult}");
+
         //var createBitstreamBuffer = Marshal.GetDelegateForFunctionPointer<NvEncCreateBitstreamBuffer>(nvencList.nvEncCreateBitstreamBuffer);
 
         var createBitstreamBufferParams = new NV_ENC_CREATE_BITSTREAM_BUFFER
@@ -226,11 +253,14 @@ public unsafe class NvencEncoderWrapper
         };
 
         var createBitstreamBufferResult = this.methods.NvEncCreateBitstreamBuffer(encoderPtr, ref createBitstreamBufferParams);
+        Log.Logger.Debug($"NvEncCreateBitstreamBuffer: {createBitstreamBufferResult}");
 
         this.bufferFmt = NV_ENC_BUFFER_FORMAT.NV_ENC_BUFFER_FORMAT_NV12;
         this.bitstreamBuffer = createBitstreamBufferParams.bitstreamBuffer;
         this.inputBuffer = createInputBufferParams.inputBuffer;
         this.encoderPtr = encoderPtr;
+
+        Log.Logger.Information("NVENC encoder created.");
     }
 
     private nint inputBuffer;
