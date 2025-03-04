@@ -59,7 +59,8 @@ public unsafe class NvencEncoderWrapper
 
     // TODO: We need to complete the close/dispose the encoder properly so we can test it at launch.
     public void Initialize(
-        Guid codec)
+        Guid codec,
+        int bitrateBps)
     {
         this.selectedCodec = codec;
         Log.Logger.Debug($"NVENC selecting codec {codec} ({(this.IsH264 ? "H264" : this.IsHEVC ? "H265" : this.IsAV1 ? "AV1" : "????")})");
@@ -112,7 +113,12 @@ public unsafe class NvencEncoderWrapper
             }
         };
 
-        var presetConfigResult = this.methods.NvEncGetEncodePresetConfigEx(encoderPtr, encoderGuid, preset, NV_ENC_TUNING_INFO.NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY, ref presetConfig);
+        var presetConfigResult = this.methods.NvEncGetEncodePresetConfigEx(
+            encoderPtr, 
+            encoderGuid, 
+            preset, 
+            NV_ENC_TUNING_INFO.NV_ENC_TUNING_INFO_LOW_LATENCY, 
+            ref presetConfig);
 
 
         //var getProfileGuidCount = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeProfileGUIDCount>(nvencList.nvEncGetEncodeProfileGUIDCount);
@@ -153,7 +159,7 @@ public unsafe class NvencEncoderWrapper
             {
                 h264Config = new NV_ENC_CONFIG_H264
                 {
-
+                    
                 }
             };
         }
@@ -176,27 +182,47 @@ public unsafe class NvencEncoderWrapper
         {
             throw new NotImplementedException();
         }
-
-        var nvEncConfig = new NV_ENC_CONFIG
-        {
-            version = NvEncodeApiVersion.NV_ENC_CONFIG_VER,
-            profileGUID = profileGuid,
-            frameIntervalP = 1,
-            gopLength = 0xffffffffu,
-            frameFieldMode = NV_ENC_PARAMS_FRAME_FIELD_MODE.NV_ENC_PARAMS_FRAME_FIELD_MODE_FRAME,
-            rcParams = new NV_ENC_RC_PARAMS
-            {
-                version = NvEncodeApiVersion.NV_ENC_RC_PARAMS_VER,
-                rateControlMode = NV_ENC_PARAMS_RC_MODE.NV_ENC_PARAMS_RC_CBR,
-                averageBitRate = 80_000_000,
-                enableAQ = true,
-                zeroReorderDelay = true,
-            },
-            encodeCodecConfig = codecConfig, 
-            reserved2 = new nint[64]
-        };
+            
+        //var nvEncConfig = new NV_ENC_CONFIG
+        //{
+        //    version = NvEncodeApiVersion.NV_ENC_CONFIG_VER,
+        //    profileGUID = profileGuid,
+        //    frameIntervalP = 1,
+        //    gopLength = 0xffffffffu,
+        //    frameFieldMode = NV_ENC_PARAMS_FRAME_FIELD_MODE.NV_ENC_PARAMS_FRAME_FIELD_MODE_FRAME,
+        //    rcParams = new NV_ENC_RC_PARAMS
+        //    {
+        //        version = NvEncodeApiVersion.NV_ENC_RC_PARAMS_VER,
+        //        rateControlMode = NV_ENC_PARAMS_RC_MODE.NV_ENC_PARAMS_RC_CBR,
+        //        averageBitRate = (uint)bitrateBps,
+        //        enableAQ = true,
+        //        zeroReorderDelay = true,
+        //    },
+        //    encodeCodecConfig = codecConfig, 
+        //    reserved2 = new nint[64]
+        //};
 
         var pNvEncConfig = Marshal.AllocHGlobal(Marshal.SizeOf<NV_ENC_CONFIG>());
+
+        //presetConfig.presetConfig.profileGUID = profileGuid;
+        presetConfig.presetConfig.frameIntervalP = 1;
+        presetConfig.presetConfig.gopLength = 0x1;
+        //presetConfig.presetConfig.frameFieldMode = NV_ENC_PARAMS_FRAME_FIELD_MODE.NV_ENC_PARAMS_FRAME_FIELD_MODE_FRAME;
+
+        //presetConfig.presetConfig.encodeCodecConfig = codecConfig;
+        presetConfig.presetConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_MODE.NV_ENC_PARAMS_RC_CBR;
+        presetConfig.presetConfig.rcParams.averageBitRate = (uint)bitrateBps;
+        //presetConfig.presetConfig.rcParams.enableAQ = true;
+        presetConfig.presetConfig.rcParams.zeroReorderDelay = true;
+
+        //presetConfig.presetConfig.frameIntervalP = 1;
+        //presetConfig.presetConfig.frameIntervalP = 1;
+        //presetConfig.presetConfig.frameIntervalP = 1;
+        //presetConfig.presetConfig.frameIntervalP = 1;
+        //presetConfig.presetConfig.frameIntervalP = 1;
+
+
+
         Marshal.StructureToPtr(presetConfig.presetConfig, pNvEncConfig, false);
 
         var createEncoderParams = new NV_ENC_INITIALIZE_PARAMS()
@@ -215,13 +241,18 @@ public unsafe class NvencEncoderWrapper
             enableMEOnlyMode = false,
 
             bufferFormat = NV_ENC_BUFFER_FORMAT.NV_ENC_BUFFER_FORMAT_NV12,
-            outputStatsLevel = NV_ENC_OUTPUT_STATS_LEVEL.NV_ENC_OUTPUT_STATS_BLOCK_LEVEL,
+            outputStatsLevel = NV_ENC_OUTPUT_STATS_LEVEL.NV_ENC_OUTPUT_STATS_NONE,
             reserved1 = new uint[284],
             reserved2 = new nint[64]
         };
 
         var initializeEncoderResult = this.methods.NvEncInitializeEncoder(encoderPtr, ref createEncoderParams);
         Log.Logger.Debug($"NvEncInitializeEncoder: {initializeEncoderResult}");
+
+        if(initializeEncoderResult != NVENCSTATUS.NV_ENC_SUCCESS)
+        {
+            throw new Exception($"Could not initialize NVENC encoder. {initializeEncoderResult}");
+        }
 
         //var createInputBuffer = Marshal.GetDelegateForFunctionPointer<NvEncCreateInputBuffer>(nvencList.nvEncCreateInputBuffer);
 
