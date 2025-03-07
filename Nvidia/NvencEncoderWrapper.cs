@@ -241,8 +241,8 @@ public unsafe class NvencEncoderWrapper
             enableMEOnlyMode = false,
 
             bufferFormat = NV_ENC_BUFFER_FORMAT.NV_ENC_BUFFER_FORMAT_NV12,
-            outputStatsLevel = NV_ENC_OUTPUT_STATS_LEVEL.NV_ENC_OUTPUT_STATS_NONE,
-            reserved1 = new uint[284],
+            //outputStatsLevel = NV_ENC_OUTPUT_STATS_LEVEL.NV_ENC_OUTPUT_STATS_NONE,
+            reserved1 = new uint[287],
             reserved2 = new nint[64]
         };
 
@@ -433,9 +433,7 @@ public unsafe class NvencEncoderWrapper
         {
             version = NvEncodeApiVersion.NV_ENC_LOCK_BITSTREAM_VER,
             outputBitstream = this.bitstreamBuffer,
-            reserved1 = new uint[219],
-            reserved2 = new nint[63],
-            reservedInternal = new uint[8]
+            reserved2 = new nint[64],
         };
 
         var lockBitstreamResult = this.methods.NvEncLockBitstream(this.encoderPtr, ref lockBitstreamParams);

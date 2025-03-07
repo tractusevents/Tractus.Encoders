@@ -6,7 +6,7 @@ namespace Tractus.Encoders.Nvidia;
 public static class NvEncodeApiVersion
 {
     // The NVENCAPI version values.
-    private const uint NVENCAPI_MAJOR_VERSION = 13;
+    private const uint NVENCAPI_MAJOR_VERSION = 12;
     private const uint NVENCAPI_MINOR_VERSION = 0;
 
     // Computes NVENCAPI_VERSION: (major | (minor << 24))
@@ -37,20 +37,40 @@ public static class NvEncodeApiVersion
         return NVENCAPI_MAJOR_VERSION | (NVENCAPI_MINOR_VERSION << 24);
     }
 
-    public static uint NV_ENC_CREATE_INPUT_BUFFER_VER => NVENCAPI_STRUCT_VERSION(2);
-    public static uint NV_ENC_INITIALIZE_PARAMS_VER => NVENCAPI_STRUCT_VERSION(7) | (1u << 31);
+    public static uint NV_ENC_CREATE_INPUT_BUFFER_VER =>
+        //v13NVENCAPI_STRUCT_VERSION(2);
+        NVENCAPI_STRUCT_VERSION(1);
+
+    public static uint NV_ENC_INITIALIZE_PARAMS_VER =>
+        //NVENCAPI_STRUCT_VERSION(7) | (1u << 31);
+        NVENCAPI_STRUCT_VERSION(5) | (1u << 31);
+
     public static uint NV_ENC_CAPS_PARAM_VER => NVENCAPI_STRUCT_VERSION(1);
-    public static uint NV_ENC_PRESET_CONFIG_VER => NVENCAPI_STRUCT_VERSION(5) | (1u << 31);
-    public static uint NV_ENC_CONFIG_VER => NVENCAPI_STRUCT_VERSION(9) | (1u << 31);
+    public static uint NV_ENC_PRESET_CONFIG_VER =>
+        //NVENCAPI_STRUCT_VERSION(5) | (1u << 31);
+        NVENCAPI_STRUCT_VERSION(4) | (1u << 31);
+
+    public static uint NV_ENC_CONFIG_VER =>
+        //v13 NVENCAPI_STRUCT_VERSION(9) | (1u << 31);
+        NVENCAPI_STRUCT_VERSION(8) | (1u << 31);
+
     public static uint NV_ENC_RC_PARAMS_VER => NVENCAPI_STRUCT_VERSION(1);
     public static uint NV_ENC_CREATE_BITSTREAM_BUFFER_VER => NVENCAPI_STRUCT_VERSION(1);
-    public static uint NV_ENC_LOCK_BITSTREAM_VER => NVENCAPI_STRUCT_VERSION(2) | (1u << 31);
+    public static uint NV_ENC_LOCK_BITSTREAM_VER =>
+        //NVENCAPI_STRUCT_VERSION(2) | (1u << 31);
+        NVENCAPI_STRUCT_VERSION(2);
+
     public static uint NV_ENC_LOCK_INPUT_BUFFER_VER => NVENCAPI_STRUCT_VERSION(1);
-    public static uint NV_ENC_PIC_PARAMS_VER => NVENCAPI_STRUCT_VERSION(7) | (1u << 31);
+    public static uint NV_ENC_PIC_PARAMS_VER =>
+        //NVENCAPI_STRUCT_VERSION(7) | (1u << 31);
+        NVENCAPI_STRUCT_VERSION(6) | (1u << 31);
+
     public static uint NV_ENC_PIC_PARAMS_MVC_VER => NVENCAPI_STRUCT_VERSION(1);
 
     // #define NV_ENC_RECONFIGURE_PARAMS_VER (NVENCAPI_STRUCT_VERSION(2) | ( 1<<31 ))
-    public static uint NV_ENC_RECONFIGURE_PARAMS_VER => NVENCAPI_STRUCT_VERSION(2) | (1u << 31);
+    public static uint NV_ENC_RECONFIGURE_PARAMS_VER =>
+        //NVENCAPI_STRUCT_VERSION(2) | (1u << 31);
+        NVENCAPI_STRUCT_VERSION(1) | (1u << 31);
 }
 
 public static class Constants
@@ -66,7 +86,8 @@ public enum NV_ENC_TUNING_INFO
     NV_ENC_TUNING_INFO_LOW_LATENCY = 2,                                     /**< Tune presets for low latency streaming.*/
     NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY = 3,                                     /**< Tune presets for ultra low latency streaming.*/
     NV_ENC_TUNING_INFO_LOSSLESS = 4,                                     /**< Tune presets for lossless encoding.*/
-    NV_ENC_TUNING_INFO_ULTRA_HIGH_QUALITY = 5,                                    /**< Tune presets for latency tolerant encoding for higher quality. Only supported for HEVC and AV1 on Turing+ architectures */
+    // Not supported in 12
+    //NV_ENC_TUNING_INFO_ULTRA_HIGH_QUALITY = 5,                                    /**< Tune presets for latency tolerant encoding for higher quality. Only supported for HEVC and AV1 on Turing+ architectures */
     NV_ENC_TUNING_INFO_COUNT
 }
 
@@ -98,21 +119,22 @@ public enum NV_ENC_MULTI_PASS
     NV_ENC_TWO_PASS_FULL_RESOLUTION = 0x2,        /**< Two Pass encoding is enabled where first Pass is full resolution */
 }
 
-public enum NV_ENC_STATE_RESTORE_TYPE
-{
-    NV_ENC_STATE_RESTORE_FULL = 0x01,      /**< Restore full encoder state */
-    NV_ENC_STATE_RESTORE_RATE_CONTROL = 0x02,      /**< Restore only rate control state */
-    NV_ENC_STATE_RESTORE_ENCODE = 0x03,      /**< Restore full encoder state except for rate control state */
-}
+// Not supported in 12.
+//public enum NV_ENC_STATE_RESTORE_TYPE
+//{
+//    NV_ENC_STATE_RESTORE_FULL = 0x01,      /**< Restore full encoder state */
+//    NV_ENC_STATE_RESTORE_RATE_CONTROL = 0x02,      /**< Restore only rate control state */
+//    NV_ENC_STATE_RESTORE_ENCODE = 0x03,      /**< Restore full encoder state except for rate control state */
+//}
 
-public enum NV_ENC_OUTPUT_STATS_LEVEL
-{
-    NV_ENC_OUTPUT_STATS_NONE = 0,             /** No output stats */
-    NV_ENC_OUTPUT_STATS_BLOCK_LEVEL = 1,             /** Output stats for every block.
-                                                           Block represents a CTB for HEVC, macroblock for H.264, super block for AV1 */
-    NV_ENC_OUTPUT_STATS_ROW_LEVEL = 2,             /** Output stats for every row.
-                                                           Row represents a CTB row for HEVC, macroblock row for H.264, super block row for AV1 */
-}
+//public enum NV_ENC_OUTPUT_STATS_LEVEL
+//{
+//    NV_ENC_OUTPUT_STATS_NONE = 0,             /** No output stats */
+//    NV_ENC_OUTPUT_STATS_BLOCK_LEVEL = 1,             /** Output stats for every block.
+//                                                           Block represents a CTB for HEVC, macroblock for H.264, super block for AV1 */
+//    NV_ENC_OUTPUT_STATS_ROW_LEVEL = 2,             /** Output stats for every row.
+//                                                           Row represents a CTB row for HEVC, macroblock row for H.264, super block row for AV1 */
+//}
 
 public enum NV_ENC_EMPHASIS_MAP_LEVEL
 {
@@ -158,7 +180,8 @@ public enum NV_ENC_PIC_TYPE
     NV_ENC_PIC_TYPE_SKIPPED = 0x05,    /**< Picture is skipped */
     NV_ENC_PIC_TYPE_INTRA_REFRESH = 0x06,    /**< First picture in intra refresh cycle */
     NV_ENC_PIC_TYPE_NONREF_P = 0x07,    /**< Non reference P picture */
-    NV_ENC_PIC_TYPE_SWITCH = 0x08,    /**< Switch frame (AV1 only) */
+    // Not supported on 12.0
+    //NV_ENC_PIC_TYPE_SWITCH = 0x08,    /**< Switch frame (AV1 only) */
     NV_ENC_PIC_TYPE_UNKNOWN = 0xFF     /**< Picture type unknown */
 }
 
@@ -204,8 +227,10 @@ public enum NV_ENC_BUFFER_FORMAT
                                                                              This format should be used only when registering the
                                                                              resource as output buffer, which will be used to write
                                                                              the encoded bit stream or H.264 ME only mode output. */
-    NV_ENC_BUFFER_FORMAT_NV16 = 0x40000001,  /**< Semi-Planar YUV 422 [Y plane followed by interleaved UV plane] */
-    NV_ENC_BUFFER_FORMAT_P210 = 0x40000002,  /**< Semi-Planar 10-bit YUV 422 [Y plane followed by interleaved UV plane] */
+
+    // Not supported on 12.0
+    //NV_ENC_BUFFER_FORMAT_NV16 = 0x40000001,  /**< Semi-Planar YUV 422 [Y plane followed by interleaved UV plane] */
+    //NV_ENC_BUFFER_FORMAT_P210 = 0x40000002,  /**< Semi-Planar 10-bit YUV 422 [Y plane followed by interleaved UV plane] */
 }
 
 public enum NV_ENC_LEVEL
@@ -289,8 +314,10 @@ public enum NV_ENC_PIC_FLAGS
                                                             [_NV_ENC_INITIALIZE_PARAMS::enablePTD == 1]. */
     NV_ENC_PIC_FLAG_OUTPUT_SPSPPS = 0x4,   /**< Write the sequence and picture header in encoded bitstream of the current picture */
     NV_ENC_PIC_FLAG_EOS = 0x8,   /**< Indicates end of the input stream */
-    NV_ENC_PIC_FLAG_DISABLE_ENC_STATE_ADVANCE = 0x10,  /**< Do not advance encoder state during encode */
-    NV_ENC_PIC_FLAG_OUTPUT_RECON_FRAME = 0x20,  /**< Write reconstructed frame */
+
+    // Not supported in 12.0
+    //NV_ENC_PIC_FLAG_DISABLE_ENC_STATE_ADVANCE = 0x10,  /**< Do not advance encoder state during encode */
+    //NV_ENC_PIC_FLAG_OUTPUT_RECON_FRAME = 0x20,  /**< Write reconstructed frame */
 }
 
 public enum NV_ENC_MEMORY_HEAP
@@ -364,7 +391,7 @@ public enum NV_ENC_BUFFER_USAGE
     NV_ENC_OUTPUT_MOTION_VECTOR = 0x1,          /**< Registered surface will be used for output of H.264 ME only mode.
                                                          This buffer usage type is not supported for HEVC ME only mode. */
     NV_ENC_OUTPUT_BITSTREAM = 0x2,          /**< Registered surface will be used for output bitstream in encoding */
-    NV_ENC_OUTPUT_RECON = 0x4,          /**< Registered surface will be used for output reconstructed frame in encoding */
+    //NV_ENC_OUTPUT_RECON = 0x4,          /**< Registered surface will be used for output reconstructed frame in encoding */
 }
 
 public enum NV_ENC_NUM_REF_FRAMES
@@ -379,11 +406,12 @@ public enum NV_ENC_NUM_REF_FRAMES
     NV_ENC_NUM_REF_FRAMES_7 = 0x7           /**< Number of reference frames equal to 7 */
 }
 
-public enum NV_ENC_TEMPORAL_FILTER_LEVEL
-{
-    NV_ENC_TEMPORAL_FILTER_LEVEL_0 = 0,
-    NV_ENC_TEMPORAL_FILTER_LEVEL_4 = 4,
-}
+// Not supported in 12.0
+//public enum NV_ENC_TEMPORAL_FILTER_LEVEL
+//{
+//    NV_ENC_TEMPORAL_FILTER_LEVEL_0 = 0,
+//    NV_ENC_TEMPORAL_FILTER_LEVEL_4 = 4,
+//}
 
 public enum NV_ENC_CAPS
 {
@@ -734,55 +762,56 @@ public enum NV_ENC_CAPS
      */
     NV_ENC_CAPS_SINGLE_SLICE_INTRA_REFRESH,
 
-    /**
-     * Indicates encoding without advancing the state support.
-     */
-    NV_ENC_CAPS_DISABLE_ENC_STATE_ADVANCE,
+    // Not supported in 12.0
+    ///**
+    // * Indicates encoding without advancing the state support.
+    // */
+    //NV_ENC_CAPS_DISABLE_ENC_STATE_ADVANCE,
 
-    /**
-     * Indicates reconstructed output support.
-     */
-    NV_ENC_CAPS_OUTPUT_RECON_SURFACE,
+    ///**
+    // * Indicates reconstructed output support.
+    // */
+    //NV_ENC_CAPS_OUTPUT_RECON_SURFACE,
 
-    /**
-     * Indicates encoded frame output stats support for every block. Block represents a CTB for HEVC, macroblock for H.264 and super block for AV1.
-     */
-    NV_ENC_CAPS_OUTPUT_BLOCK_STATS,
+    ///**
+    // * Indicates encoded frame output stats support for every block. Block represents a CTB for HEVC, macroblock for H.264 and super block for AV1.
+    // */
+    //NV_ENC_CAPS_OUTPUT_BLOCK_STATS,
 
-    /**
-     * Indicates encoded frame output stats support for every row. Row represents a CTB row for HEVC, macroblock row for H.264 and super block row for AV1.
-     */
-    NV_ENC_CAPS_OUTPUT_ROW_STATS,
+    ///**
+    // * Indicates encoded frame output stats support for every row. Row represents a CTB row for HEVC, macroblock row for H.264 and super block row for AV1.
+    // */
+    //NV_ENC_CAPS_OUTPUT_ROW_STATS,
 
 
-    /**
-     * Indicates temporal filtering support.
-     */
-    NV_ENC_CAPS_SUPPORT_TEMPORAL_FILTER,
+    ///**
+    // * Indicates temporal filtering support.
+    // */
+    //NV_ENC_CAPS_SUPPORT_TEMPORAL_FILTER,
 
-    /**
-     * Maximum Lookahead level supported (See ::NV_ENC_LOOKAHEAD_LEVEL for details).
-     */
-    NV_ENC_CAPS_SUPPORT_LOOKAHEAD_LEVEL,
+    ///**
+    // * Maximum Lookahead level supported (See ::NV_ENC_LOOKAHEAD_LEVEL for details).
+    // */
+    //NV_ENC_CAPS_SUPPORT_LOOKAHEAD_LEVEL,
 
-    /**
-     * Indicates UnidirectionalB support.
-     */
-    NV_ENC_CAPS_SUPPORT_UNIDIRECTIONAL_B,
+    ///**
+    // * Indicates UnidirectionalB support.
+    // */
+    //NV_ENC_CAPS_SUPPORT_UNIDIRECTIONAL_B,
 
-    /**
-     * Indicates HW support for MVHEVC encoding.
-     * \n 0 : MVHEVC encoding not supported.
-     * \n 1 : MVHEVC encoding supported.
-     */
-    NV_ENC_CAPS_SUPPORT_MVHEVC_ENCODE,
+    ///**
+    // * Indicates HW support for MVHEVC encoding.
+    // * \n 0 : MVHEVC encoding not supported.
+    // * \n 1 : MVHEVC encoding supported.
+    // */
+    //NV_ENC_CAPS_SUPPORT_MVHEVC_ENCODE,
 
-    /**
-     * Indicates HW support for YUV422 mode encoding.
-     * \n 0 : YUV422 mode encoding not supported.
-     * \n 1 : YUV422 mode encoding supported.
-     */
-    NV_ENC_CAPS_SUPPORT_YUV422_ENCODE,
+    ///**
+    // * Indicates HW support for YUV422 mode encoding.
+    // * \n 0 : YUV422 mode encoding not supported.
+    // * \n 1 : YUV422 mode encoding supported.
+    // */
+    //NV_ENC_CAPS_SUPPORT_YUV422_ENCODE,
 
     /**
      * Reserved - Not to be used by clients.
@@ -878,21 +907,22 @@ public enum NV_ENC_VUI_MATRIX_COEFFS
     NV_ENC_VUI_MATRIX_COEFFS_SMPTE2085 = 11,
 }
 
-public enum NV_ENC_LOOKAHEAD_LEVEL
-{
-    NV_ENC_LOOKAHEAD_LEVEL_0 = 0,
-    NV_ENC_LOOKAHEAD_LEVEL_1 = 1,
-    NV_ENC_LOOKAHEAD_LEVEL_2 = 2,
-    NV_ENC_LOOKAHEAD_LEVEL_3 = 3,
-    NV_ENC_LOOKAHEAD_LEVEL_AUTOSELECT = 15,
-}
+// Not supported in 12.0
+//public enum NV_ENC_LOOKAHEAD_LEVEL
+//{
+//    NV_ENC_LOOKAHEAD_LEVEL_0 = 0,
+//    NV_ENC_LOOKAHEAD_LEVEL_1 = 1,
+//    NV_ENC_LOOKAHEAD_LEVEL_2 = 2,
+//    NV_ENC_LOOKAHEAD_LEVEL_3 = 3,
+//    NV_ENC_LOOKAHEAD_LEVEL_AUTOSELECT = 15,
+//}
 
-public enum NV_ENC_BIT_DEPTH
-{
-    NV_ENC_BIT_DEPTH_INVALID = 0,         /**< Invalid Bit Depth */
-    NV_ENC_BIT_DEPTH_8 = 8,         /**< Bit Depth 8 */
-    NV_ENC_BIT_DEPTH_10 = 10,        /**< Bit Depth 10 */
-}
+//public enum NV_ENC_BIT_DEPTH
+//{
+//    NV_ENC_BIT_DEPTH_INVALID = 0,         /**< Invalid Bit Depth */
+//    NV_ENC_BIT_DEPTH_8 = 8,         /**< Bit Depth 8 */
+//    NV_ENC_BIT_DEPTH_10 = 10,        /**< Bit Depth 10 */
+//}
 
 [StructLayout(LayoutKind.Explicit)]
 public unsafe struct NV_ENC_CODEC_PIC_PARAMS
@@ -909,12 +939,6 @@ public unsafe struct NV_ENC_CODEC_PIC_PARAMS
     [FieldOffset(0)]
     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
     public fixed uint reserved[256];
-}
-
-[StructLayout(LayoutKind.Sequential)]
-public struct TestStruct
-{
-
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -953,14 +977,14 @@ public unsafe struct NV_ENC_PIC_PARAMS_HEVC
         get => (this.bitField & (1u << 3)) != 0;
         set => this.bitField = value ? (this.bitField | (1u << 3)) : (this.bitField & ~(1u << 3));
     }
-    public bool temporalConfigUpdate
-    {
-        get => (this.bitField & (1u << 4)) != 0;
-        set => this.bitField = value ? (this.bitField | (1u << 4)) : (this.bitField & ~(1u << 4));
-    }
-    // The remaining 27 bits (bits 5-31) are reserved and are not exposed.
+    //public bool temporalConfigUpdate
+    //{
+    //    get => (this.bitField & (1u << 4)) != 0;
+    //    set => this.bitField = value ? (this.bitField | (1u << 4)) : (this.bitField & ~(1u << 4));
+    //}
+    //// The remaining 27 bits (bits 5-31) are reserved and are not exposed.
 
-    public uint reserved1;                   // [in]: Reserved; must be 0.
+    //public uint reserved1;                   // [in]: Reserved; must be 0.
 
     // Pointer to an array of slice type data.
     public IntPtr sliceTypeData;             // [in]: uint8_t* sliceTypeData.
@@ -979,19 +1003,19 @@ public unsafe struct NV_ENC_PIC_PARAMS_HEVC
 
     public NV_ENC_TIME_CODE timeCode;        // [in]: Time code SEI data.
 
-    public uint numTemporalLayers;           // [in]: Number of temporal layers (only set if temporalConfigUpdate == 1).
-    public uint viewId;                      // [in]: View id.
+    //public uint numTemporalLayers;           // [in]: Number of temporal layers (only set if temporalConfigUpdate == 1).
+    //public uint viewId;                      // [in]: View id.
 
-    // Pointers to additional SEI structures.
-    public HEVC_3D_REFERENCE_DISPLAY_INFO p3DReferenceDisplayInfo;   // [in]: Pointer to HEVC_3D_REFERENCE_DISPLAY_INFO.
-    public CONTENT_LIGHT_LEVEL pMaxCll;                   // [in]: Pointer to CONTENT_LIGHT_LEVEL.
-    public IntPtr pMasteringDisplay;         // [in]: Pointer to MASTERING_DISPLAY_INFO.
+    //// Pointers to additional SEI structures.
+    //public HEVC_3D_REFERENCE_DISPLAY_INFO p3DReferenceDisplayInfo;   // [in]: Pointer to HEVC_3D_REFERENCE_DISPLAY_INFO.
+    //public CONTENT_LIGHT_LEVEL pMaxCll;                   // [in]: Pointer to CONTENT_LIGHT_LEVEL.
+    //public IntPtr pMasteringDisplay;         // [in]: Pointer to MASTERING_DISPLAY_INFO.
 
     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 234)]
-    public fixed uint reserved2[234];                 // [in]: Reserved array (234 uints), must be 0.
+    public fixed uint reserved2[237];                 // [in]: Reserved array (234 uints), must be 0.
 
     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 58)]
-    public fixed ulong reserved3[58];               // [in]: Reserved array of pointers (58 elements), must be NULL.
+    public fixed ulong reserved3[61];               // [in]: Reserved array of pointers (58 elements), must be NULL.
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -1161,7 +1185,7 @@ public unsafe struct NV_ENC_PIC_PARAMS_H264
 
     // Reserved array of 202 uints.
     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 202)]
-    public fixed uint reserved[202];
+    public fixed uint reserved[203];
 
     // Reserved array of 61 pointers.
     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 61)]
@@ -1200,7 +1224,7 @@ public struct NV_ENC_PIC_PARAMS
     public IntPtr meExternalHints;
 
     // Reserved array of 7 uints.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 7)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 6)]
     public uint[] reserved2;
 
     // Reserved array of 2 pointers.
@@ -1217,7 +1241,7 @@ public struct NV_ENC_PIC_PARAMS
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
     public ushort[] meHintRefPicDist;
 
-    public uint reserved4;              // Reserved.
+    //public uint reserved4;              // Reserved.
 
     public IntPtr alphaBuffer;          // NV_ENC_INPUT_PTR for alpha layer (if applicable).
 
@@ -1225,15 +1249,15 @@ public struct NV_ENC_PIC_PARAMS
     public IntPtr meExternalSbHints;
 
     public uint meSbHintsCount;         // Total number of external ME SB hint candidates.
-    public uint stateBufferIdx;         // Index of the state buffer for saving encoder state.
-    public IntPtr outputReconBuffer;    // NV_ENC_OUTPUT_PTR for reconstructed frame output.
+    //public uint stateBufferIdx;         // Index of the state buffer for saving encoder state.
+    //public IntPtr outputReconBuffer;    // NV_ENC_OUTPUT_PTR for reconstructed frame output.
 
     // Reserved array of 284 uints.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 284)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 285)]
     public uint[] reserved3;
 
     // Reserved array of 57 pointers.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 57)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 58)]
     public IntPtr[] reserved6;
 }
 
@@ -1323,13 +1347,14 @@ public unsafe struct NV_ENC_TIME_CODE
     public NV_ENC_CLOCK_TIMESTAMP_SET clockTimestamp1;
     public NV_ENC_CLOCK_TIMESTAMP_SET clockTimestamp2;
 
-    public uint skipClockTimestampInsertion;
+    // Not supported in v12
+    //public uint skipClockTimestampInsertion;
 }
 
 
 
 [StructLayout(LayoutKind.Sequential)]
-public struct NV_ENC_LOCK_BITSTREAM
+public unsafe struct NV_ENC_LOCK_BITSTREAM
 {
     public uint version; // Must be set to NV_ENC_LOCK_BITSTREAM_VER
 
@@ -1376,24 +1401,24 @@ public struct NV_ENC_LOCK_BITSTREAM
     public uint ltrFrameIdx;            // LTR frame index.
     public uint ltrFrameBitmap;         // Bitmap of LTR frame indices.
     public uint temporalId;             // Temporal ID when using temporal SVC.
+    public fixed uint reserved[12];
     public uint intraMBCount;           // Number of intra MBs/CTBs/SBs.
     public uint interMBCount;           // Number of inter MBs/CTBs/SBs.
     public int averageMVX;              // Average motion vector X.
     public int averageMVY;              // Average motion vector Y.
     public uint alphaLayerSizeInBytes;  // Size in bytes of alpha layer (if used).
-    public uint outputStatsPtrSize;     // Size of the output stats buffer.
-    public uint reserved;               // Reserved; must be 0.
-    public IntPtr outputStatsPtr;       // Pointer to the output stats buffer.
-    public uint frameIdxDisplay;        // Display order frame index.
+    //public uint outputStatsPtrSize;     // Size of the output stats buffer.
+    //public uint reserved;               // Reserved; must be 0.
+    //public IntPtr outputStatsPtr;       // Pointer to the output stats buffer.
+    //public uint frameIdxDisplay;        // Display order frame index.
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 219)]
-    public uint[] reserved1;            // Reserved, must be 0.
+    public fixed uint reserved1[218];            // Reserved, must be 0.
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 63)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
     public IntPtr[] reserved2;          // Reserved, must be NULL.
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
-    public uint[] reservedInternal;     // Reserved, must be 0.
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+    //public uint[] reservedInternal;     // Reserved, must be 0.
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -1426,7 +1451,7 @@ public struct NV_ENC_LOCK_INPUT_BUFFER
 public struct NV_ENC_PRESET_CONFIG
 {
     public uint version;
-    public uint reserved;
+    //public uint reserved;
     public NV_ENC_CONFIG presetConfig;
     public uint[] reserved1;
     public nint[] reserved2;
@@ -1465,8 +1490,13 @@ public struct NV_ENC_RC_PARAMS
     // Bit 10: enableNonRefP
     // Bit 11: strictGOPTarget
     // Bits 12-15: aqStrength (4 bits)
+
+    // v13:
     // Bit 16: enableExtLookahead
     // Bits 17-31: reservedBitFields (15 bits, must be 0)
+
+    // v12:
+    // Bits 16-31: reserved (16 bits, must be 0)
     private uint bitFields;
 
     // Helper properties to access individual bit fields:
@@ -1531,12 +1561,13 @@ public struct NV_ENC_RC_PARAMS
         get => (byte)((this.bitFields >> 12) & 0xF);
         set => this.bitFields = (this.bitFields & ~(0xFu << 12)) | (((uint)value & 0xF) << 12);
     }
-    public bool enableExtLookahead
-    {
-        get => (this.bitFields & (1u << 16)) != 0;
-        set => this.bitFields = value ? (this.bitFields | (1u << 16)) : (this.bitFields & ~(1u << 16));
-    }
-    // The remaining 15 bits (bits 17-31) are reserved.
+    // Not supported in v12
+    //public bool enableExtLookahead
+    //{
+    //    get => (this.bitFields & (1u << 16)) != 0;
+    //    set => this.bitFields = value ? (this.bitFields | (1u << 16)) : (this.bitFields & ~(1u << 16));
+    //}
+    // The remaining 16 bits (bits 16-31) are reserved.
 
     public NV_ENC_QP minQP;
     public NV_ENC_QP maxQP;
@@ -1559,19 +1590,21 @@ public struct NV_ENC_RC_PARAMS
     public sbyte cbQPIndexOffset;
     public sbyte crQPIndexOffset;
     public ushort reserved2;
-    public NV_ENC_LOOKAHEAD_LEVEL lookaheadLevel;
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MAX_NUM_VIEWS_MINUS_1)]
-    public byte[] viewBitrateRatios;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    public uint[] reserved; // 4
+    //public NV_ENC_LOOKAHEAD_LEVEL lookaheadLevel;
 
-    public byte reserved3;
-    public uint reserved1;
+    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = Constants.MAX_NUM_VIEWS_MINUS_1)]
+    //public byte[] viewBitrateRatios;
+
+    //public byte reserved3;
+    //public uint reserved1;
 }
 
 [StructLayout(LayoutKind.Sequential)]
 public struct NV_ENC_CONFIG
 {
-    //#define NV_ENC_CONFIG_VER (NVENCAPI_STRUCT_VERSION(9) | ( 1<<31 ))
     public uint version;
     public Guid profileGUID;
     public uint gopLength;
@@ -1670,7 +1703,9 @@ public unsafe struct NV_ENC_CONFIG_HEVC
         get => (byte)((this.bitField0 >> 9) & 0x3);
         set => this.bitField0 = (this.bitField0 & ~(0x3u << 9)) | (((uint)value & 0x3) << 9);
     }
-    public byte reserved3
+
+    // In v13, this is reserved
+    public byte pixelBitDepthMinus8
     {
         get => (byte)((this.bitField0 >> 11) & 0x7);
         set => this.bitField0 = (this.bitField0 & ~(0x7u << 11)) | (((uint)value & 0x7) << 11);
@@ -1705,35 +1740,37 @@ public unsafe struct NV_ENC_CONFIG_HEVC
         get => (this.bitField0 & (1u << 19)) != 0;
         set => this.bitField0 = value ? (this.bitField0 | (1u << 19)) : (this.bitField0 & ~(1u << 19));
     }
-    public bool enableTemporalSVC
-    {
-        get => (this.bitField0 & (1u << 20)) != 0;
-        set => this.bitField0 = value ? (this.bitField0 | (1u << 20)) : (this.bitField0 & ~(1u << 20));
-    }
-    public bool enableMVHEVC
-    {
-        get => (this.bitField0 & (1u << 21)) != 0;
-        set => this.bitField0 = value ? (this.bitField0 | (1u << 21)) : (this.bitField0 & ~(1u << 21));
-    }
-    public bool outputHevc3DReferenceDisplayInfo
-    {
-        get => (this.bitField0 & (1u << 22)) != 0;
-        set => this.bitField0 = value ? (this.bitField0 | (1u << 22)) : (this.bitField0 & ~(1u << 22));
-    }
-    public bool outputMaxCll
-    {
-        get => (this.bitField0 & (1u << 23)) != 0;
-        set => this.bitField0 = value ? (this.bitField0 | (1u << 23)) : (this.bitField0 & ~(1u << 23));
-    }
-    public bool outputMasteringDisplay
-    {
-        get => (this.bitField0 & (1u << 24)) != 0;
-        set => this.bitField0 = value ? (this.bitField0 | (1u << 24)) : (this.bitField0 & ~(1u << 24));
-    }
+
+    //public bool enableTemporalSVC
+    //{
+    //    get => (this.bitField0 & (1u << 20)) != 0;
+    //    set => this.bitField0 = value ? (this.bitField0 | (1u << 20)) : (this.bitField0 & ~(1u << 20));
+    //}
+    //public bool enableMVHEVC
+    //{
+    //    get => (this.bitField0 & (1u << 21)) != 0;
+    //    set => this.bitField0 = value ? (this.bitField0 | (1u << 21)) : (this.bitField0 & ~(1u << 21));
+    //}
+    //public bool outputHevc3DReferenceDisplayInfo
+    //{
+    //    get => (this.bitField0 & (1u << 22)) != 0;
+    //    set => this.bitField0 = value ? (this.bitField0 | (1u << 22)) : (this.bitField0 & ~(1u << 22));
+    //}
+    //public bool outputMaxCll
+    //{
+    //    get => (this.bitField0 & (1u << 23)) != 0;
+    //    set => this.bitField0 = value ? (this.bitField0 | (1u << 23)) : (this.bitField0 & ~(1u << 23));
+    //}
+    //public bool outputMasteringDisplay
+    //{
+    //    get => (this.bitField0 & (1u << 24)) != 0;
+    //    set => this.bitField0 = value ? (this.bitField0 | (1u << 24)) : (this.bitField0 & ~(1u << 24));
+    //}
+
     public byte reservedBitFields
     {
-        get => (byte)((this.bitField0 >> 25) & 0x7F);
-        set => this.bitField0 = (this.bitField0 & ~(0x7Fu << 25)) | (((uint)value & 0x7F) << 25);
+        get => (byte)((this.bitField0 >> 20) & 0x7F);
+        set => this.bitField0 = (this.bitField0 & ~(0x7Fu << 20)) | (((uint)value & 0x7F) << 20);
     }
 
     // Remaining fields:
@@ -1754,15 +1791,17 @@ public unsafe struct NV_ENC_CONFIG_HEVC
     public NV_ENC_BFRAME_REF_MODE useBFramesAsRef; // B-Frame as reference mode.
     public NV_ENC_NUM_REF_FRAMES numRefL0; // Number of reference frames in L0.
     public NV_ENC_NUM_REF_FRAMES numRefL1; // Number of reference frames in L1.
-    public NV_ENC_TEMPORAL_FILTER_LEVEL tfLevel; // Temporal filter level.
-    public uint disableDeblockingFilterIDC;  // Deblocking filter mode.
-    public NV_ENC_BIT_DEPTH outputBitDepth;  // Output bit depth.
-    public NV_ENC_BIT_DEPTH inputBitDepth;   // Input bit depth.
-    public uint numTemporalLayers;       // Number of temporal layers.
-    public uint numViews;                // Number of views for MVHEVC.
+
+
+    //public NV_ENC_TEMPORAL_FILTER_LEVEL tfLevel; // Temporal filter level.
+    //public uint disableDeblockingFilterIDC;  // Deblocking filter mode.
+    //public NV_ENC_BIT_DEPTH outputBitDepth;  // Output bit depth.
+    //public NV_ENC_BIT_DEPTH inputBitDepth;   // Input bit depth.
+    //public uint numTemporalLayers;       // Number of temporal layers.
+    //public uint numViews;                // Number of views for MVHEVC.
 
     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 208)]
-    public fixed uint reserved1[208];             // Reserved array, must be zero.
+    public fixed uint reserved1[214];             // Reserved array, must be zero.
 
     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
     public fixed ulong reserved2[64];           // Reserved array of pointers, must be null.
@@ -1938,12 +1977,12 @@ public unsafe struct NV_ENC_CONFIG_H264
     public NV_ENC_BFRAME_REF_MODE useBFramesAsRef;
     public NV_ENC_NUM_REF_FRAMES numRefL0;
     public NV_ENC_NUM_REF_FRAMES numRefL1;
-    public NV_ENC_BIT_DEPTH outputBitDepth;
-    public NV_ENC_BIT_DEPTH inputBitDepth;
-    public NV_ENC_TEMPORAL_FILTER_LEVEL tfLevel;
+    //public NV_ENC_BIT_DEPTH outputBitDepth;
+    //public NV_ENC_BIT_DEPTH inputBitDepth;
+    //public NV_ENC_TEMPORAL_FILTER_LEVEL tfLevel;
 
-    //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 264)]
-    public fixed uint reserved1[264];
+    //v13, 264
+    public fixed uint reserved1[267];
 
     //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
     public fixed ulong reserved2[64];
@@ -2008,8 +2047,9 @@ public static class EncodeProfileGuids
     public static readonly Guid NV_ENC_H264_PROFILE_BASELINE_GUID = new Guid("0727bcaa-78c4-4c83-8c2f-ef3dff267c6a");
     public static readonly Guid NV_ENC_H264_PROFILE_MAIN_GUID = new Guid("60b5c1d4-67fe-4790-94d5-c4726d7b6e6d");
     public static readonly Guid NV_ENC_H264_PROFILE_HIGH_GUID = new Guid("e7cbc309-4f7a-4b89-af2a-d537c92be310");
-    public static readonly Guid NV_ENC_H264_PROFILE_HIGH_10_GUID = new Guid("8f0c337e-186c-48e9-a69d-7a8334089758");
-    public static readonly Guid NV_ENC_H264_PROFILE_HIGH_422_GUID = new Guid("ff3242e9-613c-4295-a1e8-2a7fe94d8133");
+    // Not supported in 12, added in 13
+    //public static readonly Guid NV_ENC_H264_PROFILE_HIGH_10_GUID = new Guid("8f0c337e-186c-48e9-a69d-7a8334089758");
+    //public static readonly Guid NV_ENC_H264_PROFILE_HIGH_422_GUID = new Guid("ff3242e9-613c-4295-a1e8-2a7fe94d8133");
     public static readonly Guid NV_ENC_H264_PROFILE_HIGH_444_GUID = new Guid("7ac663cb-a598-4960-b844-339b261a7d52");
     public static readonly Guid NV_ENC_H264_PROFILE_STEREO_GUID = new Guid("40847bf5-33f7-4601-9084-e8fe3c1db8b7");
     public static readonly Guid NV_ENC_H264_PROFILE_PROGRESSIVE_HIGH_GUID = new Guid("b405afac-f32b-417b-89c4-9abeed3e5978");
@@ -2258,11 +2298,11 @@ public struct NV_ENCODE_API_FUNCTION_LIST
     public IntPtr nvEncSetIOCudaStreams;
     public IntPtr nvEncGetEncodePresetConfigEx;
     public IntPtr nvEncGetSequenceParamEx;
-    public IntPtr nvEncRestoreEncoderState;
-    public IntPtr nvEncLookaheadPicture;
+    //public IntPtr nvEncRestoreEncoderState;
+    //public IntPtr nvEncLookaheadPicture;
 
     // Reserved array (275 pointers) which must be set to null.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 275)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 277)]
     public IntPtr[] reserved2;
 }
 
@@ -2279,7 +2319,7 @@ public struct NV_ENC_CAPS_PARAM
 public struct NV_ENC_RECONFIGURE_PARAMS
 {
     public uint version;
-    public uint reserved;
+    //public uint reserved;
     public NV_ENC_INITIALIZE_PARAMS reinitEncodeParams;
     // Packed bit-field:
     // Bit 0: resetEncoder (1 bit)
@@ -2303,7 +2343,7 @@ public struct NV_ENC_RECONFIGURE_PARAMS
 
     // The remaining 30 bits (reserved1) are not exposed.
 
-    public uint reserved2;      // Reserved; must be 0.
+    //public uint reserved2;      // Reserved; must be 0.
 }
 
 // The NV_ENC_INITIALIZE_PARAMS structure
@@ -2364,36 +2404,46 @@ public struct NV_ENC_INITIALIZE_PARAMS
         get => (this.bitFields & (1u << 4)) != 0;
         set => this.bitFields = value ? (this.bitFields | (1u << 4)) : (this.bitFields & ~(1u << 4));
     }
-    public uint splitEncodeMode
-    {
-        // Bits 5-8 (4 bits)
-        get => (this.bitFields >> 5) & 0xF;
-        set => this.bitFields = (this.bitFields & ~(0xFu << 5)) | ((value & 0xF) << 5);
-    }
+
+
+
     public bool enableOutputInVidmem
     {
-        get => (this.bitFields & (1u << 9)) != 0;
-        set => this.bitFields = value ? (this.bitFields | (1u << 9)) : (this.bitFields & ~(1u << 9));
+        get => (this.bitFields & (1u << 5)) != 0;
+        set => this.bitFields = value ? (this.bitFields | (1u << 5)) : (this.bitFields & ~(1u << 5));
     }
-    public bool enableReconFrameOutput
-    {
-        get => (this.bitFields & (1u << 10)) != 0;
-        set => this.bitFields = value ? (this.bitFields | (1u << 10)) : (this.bitFields & ~(1u << 10));
-    }
-    public bool enableOutputStats
-    {
-        get => (this.bitFields & (1u << 11)) != 0;
-        set => this.bitFields = value ? (this.bitFields | (1u << 11)) : (this.bitFields & ~(1u << 11));
-    }
-    public bool enableUniDirectionalB
-    {
-        get => (this.bitFields & (1u << 12)) != 0;
-        set => this.bitFields = value ? (this.bitFields | (1u << 12)) : (this.bitFields & ~(1u << 12));
-    }
+
+
+    //public uint splitEncodeMode
+    //{
+    //    // Bits 5-8 (4 bits)
+    //    get => (this.bitFields >> 5) & 0xF;
+    //    set => this.bitFields = (this.bitFields & ~(0xFu << 5)) | ((value & 0xF) << 5);
+    //}
+    //public bool enableOutputInVidmem
+    //{
+    //    get => (this.bitFields & (1u << 9)) != 0;
+    //    set => this.bitFields = value ? (this.bitFields | (1u << 9)) : (this.bitFields & ~(1u << 9));
+    //}
+    //public bool enableReconFrameOutput
+    //{
+    //    get => (this.bitFields & (1u << 10)) != 0;
+    //    set => this.bitFields = value ? (this.bitFields | (1u << 10)) : (this.bitFields & ~(1u << 10));
+    //}
+    //public bool enableOutputStats
+    //{
+    //    get => (this.bitFields & (1u << 11)) != 0;
+    //    set => this.bitFields = value ? (this.bitFields | (1u << 11)) : (this.bitFields & ~(1u << 11));
+    //}
+    //public bool enableUniDirectionalB
+    //{
+    //    get => (this.bitFields & (1u << 12)) != 0;
+    //    set => this.bitFields = value ? (this.bitFields | (1u << 12)) : (this.bitFields & ~(1u << 12));
+    //}
     // The remaining 19 bits are reserved and not exposed.
 
     public uint privDataSize;                 // Reserved private data buffer size; must be 0.
-    public uint reserved;                     // Reserved; must be 0.
+    //public uint reserved;                     // Reserved; must be 0.
     public IntPtr privData;                   // Reserved private data buffer; must be NULL.
     public IntPtr encodeConfig;               // Pointer to an NV_ENC_CONFIG structure.
     public uint maxEncodeWidth;               // Maximum encode width for dynamic resolution changes.
@@ -2406,10 +2456,10 @@ public struct NV_ENC_INITIALIZE_PARAMS
     public NV_ENC_TUNING_INFO tuningInfo;     // NVENC tuning information.
     public NV_ENC_BUFFER_FORMAT bufferFormat; // Input buffer format (used only for DX12 interface).
     public uint numStateBuffers;              // Number of state buffers to allocate for saving encoder state.
-    public NV_ENC_OUTPUT_STATS_LEVEL outputStatsLevel; // Level for encoded frame output stats.
+    //public NV_ENC_OUTPUT_STATS_LEVEL outputStatsLevel; // Level for encoded frame output stats.
 
     // Reserved array of 284 uints.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 284)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 287)]
     public uint[] reserved1;
 
     // Reserved array of 64 pointers.
@@ -2505,7 +2555,9 @@ public struct NV_ENC_CREATE_INPUT_BUFFER
     public IntPtr pSysMemBuffer;
 
     // Reserved array of 58 uints.
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 58)]
+
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 57)]
+    //v13[MarshalAs(UnmanagedType.ByValArray, SizeConst = 58)]
     public uint[] reserved1;
 
     // Reserved array of 63 void* pointers.
