@@ -291,7 +291,7 @@ public unsafe class NvencEncoderWrapper
         this.inputBuffer = createInputBufferParams.inputBuffer;
         this.encoderPtr = encoderPtr;
 
-        Log.Logger.Information("NVENC encoder created.");
+        Log.Logger.Debug($"NVENC encoder created - {this.bufferFmt.ToString()} -- {(encoderGuid == EncodeGuids.NV_ENC_CODEC_HEVC_GUID ? "HEVC" : encoderGuid == EncodeGuids.NV_ENC_CODEC_H264_GUID ? "H264" : encoderGuid.ToString())}");
     }
 
     private nint inputBuffer;
