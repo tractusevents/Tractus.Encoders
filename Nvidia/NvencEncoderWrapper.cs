@@ -1,4 +1,4 @@
-﻿using Serilog;
+using Serilog;
 using System;
 using System.Runtime.InteropServices;
 
@@ -9,6 +9,10 @@ public unsafe class NvencEncoderWrapper
     private nint cudaContextPtr;
     private NV_ENCODE_API_FUNCTION_LIST functionList;
     private Guid selectedCodec;
+    private int width;
+    private int height;
+    private int fpsNumerator;
+    private int fpsDenominator;
 
     public bool IsH264 => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_H264_GUID;
     public bool IsHEVC => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_HEVC_GUID;
@@ -60,9 +64,17 @@ public unsafe class NvencEncoderWrapper
     // TODO: We need to complete the close/dispose the encoder properly so we can test it at launch.
     public void Initialize(
         Guid codec,
-        int bitrateBps)
+        int bitrateBps,
+        int width,
+        int height,
+        int fpsNumerator = 60,
+        int fpsDenominator = 1)
     {
         this.selectedCodec = codec;
+        this.width = width;
+        this.height = height;
+        this.fpsNumerator = fpsNumerator;
+        this.fpsDenominator = fpsDenominator;
         Log.Logger.Debug($"NVENC selecting codec {codec} ({(this.IsH264 ? "H264" : this.IsHEVC ? "H265" : this.IsAV1 ? "AV1" : "????")})");
 
         var openSessionParams = new NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS
@@ -231,8 +243,8 @@ public unsafe class NvencEncoderWrapper
             enableEncodeAsync = 0,
             encodeGUID = encoderGuid,
             presetGUID = preset,
-            encodeWidth = 1920,
-            encodeHeight = 1080,
+            encodeWidth = (uint)this.width,
+            encodeHeight = (uint)this.height,
             frameRateNum = 60,
             frameRateDen = 1,
             enablePTD = 1,
@@ -259,8 +271,8 @@ public unsafe class NvencEncoderWrapper
         var createInputBufferParams = new NV_ENC_CREATE_INPUT_BUFFER
         {
             version = NvEncodeApiVersion.NV_ENC_CREATE_INPUT_BUFFER_VER,
-            width = 1920,
-            height = 1080,
+            width = (uint)this.width,
+            height = (uint)this.height,
             bufferFmt = NV_ENC_BUFFER_FORMAT.NV_ENC_BUFFER_FORMAT_NV12,
             memoryHeap = NV_ENC_MEMORY_HEAP.NV_ENC_MEMORY_HEAP_AUTOSELECT,
             reserved = 0,
@@ -342,7 +354,7 @@ public unsafe class NvencEncoderWrapper
 
         var inputBufferPtr = (byte*)lockInputBufferParams.bufferDataPtr.ToPointer();
 
-        var bufferSize = (1920 * 1080 * 3) / 2;
+        var bufferSize = (this.width * this.height * 3) / 2;
 
         Buffer.MemoryCopy(
             nv12Data.ToPointer(),
@@ -406,14 +418,14 @@ public unsafe class NvencEncoderWrapper
             encodePicFlags = NV_ENC_PIC_FLAGS.NV_ENC_PIC_FLAG_FORCEINTRA | NV_ENC_PIC_FLAGS.NV_ENC_PIC_FLAG_OUTPUT_SPSPPS 
                 | NV_ENC_PIC_FLAGS.NV_ENC_PIC_FLAG_FORCEIDR,
             bufferFmt = this.bufferFmt,
-            inputWidth = 1920,
-            inputHeight = 1080,
+            inputWidth = (uint)this.width,
+            inputHeight = (uint)this.height,
             inputBuffer = this.inputBuffer,
             outputBitstream = this.bitstreamBuffer,
             completionEvent = nint.Zero,
             inputTimeStamp = 0,
             pictureStruct = NV_ENC_PIC_STRUCT.NV_ENC_PIC_STRUCT_FRAME,
-            inputPitch = 1920,
+            inputPitch = (uint)this.width,
             codecPicParams = codecPicParams,
         };
 
@@ -471,3 +483,6 @@ public class NvencBitstreamLockResult
         this.SizeInBytes = sizeInBytes;
     }
 }
+
+
+
