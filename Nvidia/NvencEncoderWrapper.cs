@@ -68,13 +68,15 @@ public unsafe class NvencEncoderWrapper
         int width,
         int height,
         int fpsNumerator = 60,
-        int fpsDenominator = 1)
+        int fpsDenominator = 1,
+        int keyFrameIntervalFrames = 1)
     {
         this.selectedCodec = codec;
         this.width = width;
         this.height = height;
         this.fpsNumerator = fpsNumerator;
         this.fpsDenominator = fpsDenominator;
+        var normalizedKeyFrameIntervalFrames = Math.Max(1, keyFrameIntervalFrames);
         Log.Logger.Debug($"NVENC selecting codec {codec} ({(this.IsH264 ? "H264" : this.IsHEVC ? "H265" : this.IsAV1 ? "AV1" : "????")})");
 
         var openSessionParams = new NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS
@@ -163,32 +165,28 @@ public unsafe class NvencEncoderWrapper
 
         //var initializeEncoder = Marshal.GetDelegateForFunctionPointer<NvEncInitializeEncoder>(nvencList.nvEncInitializeEncoder);
 
-        NV_ENC_CODEC_CONFIG codecConfig;
+        var codecConfig = presetConfig.presetConfig.encodeCodecConfig;
 
         if (codec == EncodeGuids.NV_ENC_CODEC_H264_GUID)
         {
-            codecConfig = new NV_ENC_CODEC_CONFIG
-            {
-                h264Config = new NV_ENC_CONFIG_H264
-                {
-                    
-                }
-            };
+            var h264Config = codecConfig.h264Config;
+            h264Config.repeatSPSPPS = true;
+            h264Config.idrPeriod = (uint)normalizedKeyFrameIntervalFrames;
+            h264Config.intraRefreshPeriod = 0;
+            h264Config.intraRefreshCnt = 0;
+            h264Config.useBFramesAsRef = NV_ENC_BFRAME_REF_MODE.NV_ENC_BFRAME_REF_MODE_DISABLED;
+            codecConfig.h264Config = h264Config;
         }
         else if (codec == EncodeGuids.NV_ENC_CODEC_HEVC_GUID)
         {
-            codecConfig = new NV_ENC_CODEC_CONFIG
-            {
-                hevcConfig = new NV_ENC_CONFIG_HEVC
-                {
-                    enableLTR = false,
-                    repeatSPSPPS = true,
-                    idrPeriod = 1,
-                    intraRefreshPeriod = 1,
-                    useBFramesAsRef = NV_ENC_BFRAME_REF_MODE.NV_ENC_BFRAME_REF_MODE_DISABLED,
-                    
-                }
-            };
+            var hevcConfig = codecConfig.hevcConfig;
+            hevcConfig.enableLTR = false;
+            hevcConfig.repeatSPSPPS = true;
+            hevcConfig.idrPeriod = (uint)normalizedKeyFrameIntervalFrames;
+            hevcConfig.intraRefreshPeriod = 0;
+            hevcConfig.intraRefreshCnt = 0;
+            hevcConfig.useBFramesAsRef = NV_ENC_BFRAME_REF_MODE.NV_ENC_BFRAME_REF_MODE_DISABLED;
+            codecConfig.hevcConfig = hevcConfig;
         }
         else
         {
@@ -218,10 +216,10 @@ public unsafe class NvencEncoderWrapper
 
         //presetConfig.presetConfig.profileGUID = profileGuid;
         presetConfig.presetConfig.frameIntervalP = 1;
-        presetConfig.presetConfig.gopLength = 0x1;
+        presetConfig.presetConfig.gopLength = (uint)normalizedKeyFrameIntervalFrames;
         //presetConfig.presetConfig.frameFieldMode = NV_ENC_PARAMS_FRAME_FIELD_MODE.NV_ENC_PARAMS_FRAME_FIELD_MODE_FRAME;
 
-        //presetConfig.presetConfig.encodeCodecConfig = codecConfig;
+        presetConfig.presetConfig.encodeCodecConfig = codecConfig;
         presetConfig.presetConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_MODE.NV_ENC_PARAMS_RC_CBR;
         presetConfig.presetConfig.rcParams.averageBitRate = (uint)bitrateBps;
         //presetConfig.presetConfig.rcParams.enableAQ = true;
@@ -245,8 +243,8 @@ public unsafe class NvencEncoderWrapper
             presetGUID = preset,
             encodeWidth = (uint)this.width,
             encodeHeight = (uint)this.height,
-            frameRateNum = 60,
-            frameRateDen = 1,
+            frameRateNum = (uint)this.fpsNumerator,
+            frameRateDen = (uint)this.fpsDenominator,
             enablePTD = 1,
             tuningInfo = NV_ENC_TUNING_INFO.NV_ENC_TUNING_INFO_LOW_LATENCY,
             encodeConfig = pNvEncConfig,
@@ -339,7 +337,7 @@ public unsafe class NvencEncoderWrapper
         CudaNative.cuCtxDestroy(this.cudaContextPtr);
     }
 
-    public NvencBitstreamLockResult Encode(nint nv12Data)
+    public NvencBitstreamLockResult Encode(nint nv12Data, bool forceKeyFrame = true)
     {
         var lockInputBufferParams = new NV_ENC_LOCK_INPUT_BUFFER
         {
@@ -415,8 +413,9 @@ public unsafe class NvencEncoderWrapper
         var picParams = new NV_ENC_PIC_PARAMS
         {
             version = NvEncodeApiVersion.NV_ENC_PIC_PARAMS_VER,
-            encodePicFlags = NV_ENC_PIC_FLAGS.NV_ENC_PIC_FLAG_FORCEINTRA | NV_ENC_PIC_FLAGS.NV_ENC_PIC_FLAG_OUTPUT_SPSPPS 
-                | NV_ENC_PIC_FLAGS.NV_ENC_PIC_FLAG_FORCEIDR,
+            encodePicFlags = forceKeyFrame
+                ? NV_ENC_PIC_FLAGS.NV_ENC_PIC_FLAG_FORCEINTRA | NV_ENC_PIC_FLAGS.NV_ENC_PIC_FLAG_OUTPUT_SPSPPS | NV_ENC_PIC_FLAGS.NV_ENC_PIC_FLAG_FORCEIDR
+                : 0,
             bufferFmt = this.bufferFmt,
             inputWidth = (uint)this.width,
             inputHeight = (uint)this.height,
@@ -483,6 +482,4 @@ public class NvencBitstreamLockResult
         this.SizeInBytes = sizeInBytes;
     }
 }
-
-
 
