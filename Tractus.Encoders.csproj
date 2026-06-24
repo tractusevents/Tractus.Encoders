@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <Title>Encoder Wrappers for .NET Core</Title>
     <Version>2025.2.24.1</Version>
-    <Description>Provides a wrapper to NVENC, OpenH264.</Description>
+    <Description>Provides wrappers for NVENC, OpenH264, and AMD AMF.</Description>
     <PackageProjectUrl>https://github.com/tractusevents/Tractus.Encoders</PackageProjectUrl>
     <PackageIcon>logo.png</PackageIcon>
     <RepositoryUrl>https://github.com/tractusEvents/Tractus.Encoders</RepositoryUrl>
@@ -22,9 +22,30 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="AMF\" />
     <Folder Include="OpenH264\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="native\Tractus.AmfShim\artifacts\win-x64\Tractus.AmfShim.dll" Condition="Exists('native\Tractus.AmfShim\artifacts\win-x64\Tractus.AmfShim.dll')">
+      <Link>Tractus.AmfShim.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Include="native\Tractus.AmfShim\artifacts\linux-x64\libTractus.AmfShim.so" Condition="Exists('native\Tractus.AmfShim\artifacts\linux-x64\libTractus.AmfShim.so')">
+      <Link>libTractus.AmfShim.so</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
 
+  <Target Name="RemoveUnsupported32BitEncoderNativeArtifacts" AfterTargets="Build;Publish">
+    <!-- H264Sharp includes 32-bit native payloads in lib/; Tractus encoders ship x64/arm64 only. -->
+    <ItemGroup>
+      <Unsupported32BitEncoderNativeArtifact Include="$(TargetDir)**\H264SharpNative-win32.dll;$(TargetDir)**\openh264-2.4.1-win32.dll;$(TargetDir)**\H264SharpNative-linux32.so;$(TargetDir)**\libopenh264-2.4.1-linux32.7.so;$(TargetDir)**\H264SharpNative-linux-arm32.so;$(TargetDir)**\libopenh264-2.4.1-linux-arm.7.so" />
+      <Unsupported32BitEncoderNativeArtifact Include="$(PublishDir)**\H264SharpNative-win32.dll;$(PublishDir)**\openh264-2.4.1-win32.dll;$(PublishDir)**\H264SharpNative-linux32.so;$(PublishDir)**\libopenh264-2.4.1-linux32.7.so;$(PublishDir)**\H264SharpNative-linux-arm32.so;$(PublishDir)**\libopenh264-2.4.1-linux-arm.7.so" Condition="'$(PublishDir)' != ''" />
+    </ItemGroup>
+    <Delete Files="@(Unsupported32BitEncoderNativeArtifact)" TreatErrorsAsWarnings="true" />
+  </Target>
 
 </Project>
