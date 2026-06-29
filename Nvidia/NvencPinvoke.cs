@@ -1451,9 +1451,13 @@ public struct NV_ENC_LOCK_INPUT_BUFFER
 public struct NV_ENC_PRESET_CONFIG
 {
     public uint version;
-    //public uint reserved;
+    public uint reserved;
     public NV_ENC_CONFIG presetConfig;
+
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 255)]
     public uint[] reserved1;
+
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
     public nint[] reserved2;
 }
 
@@ -1614,8 +1618,12 @@ public struct NV_ENC_CONFIG
     public NV_ENC_MV_PRECISION mvPrecision;
     public NV_ENC_RC_PARAMS rcParams;
     public NV_ENC_CODEC_CONFIG encodeCodecConfig;
-    public uint[] reserved; // 278
-    public nint[] reserved2; // 64
+
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 278)]
+    public uint[] reserved;
+
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+    public nint[] reserved2;
 }
 
 [StructLayout(LayoutKind.Sequential)]

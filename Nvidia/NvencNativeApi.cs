@@ -5,6 +5,11 @@ namespace Tractus.Encoders.Nvidia;
 
 public static class NvencNativeApi
 {
+    static NvencNativeApi()
+    {
+        NvidiaNativeLibraryResolver.EnsureRegistered();
+    }
+
     // NvEncodeAPICreateInstance
     /**
      * \ingroup ENCODE_FUNC
@@ -24,7 +29,7 @@ public static class NvencNativeApi
     // TODO: Configure the DLL import resolver so we look for the NVENC dynlib
     // based on the correct name & OS. Right now this is windows only.
     //NVENCSTATUS NVENCAPI NvEncodeAPICreateInstance(NV_ENCODE_API_FUNCTION_LIST* functionList);
-    [DllImport("nvEncodeAPI64.dll", CallingConvention = CallingConvention.StdCall, EntryPoint = "NvEncodeAPICreateInstance")]
+    [DllImport(NvidiaNativeLibraryResolver.NvEncodeApiLibrary, CallingConvention = CallingConvention.StdCall, EntryPoint = "NvEncodeAPICreateInstance")]
     public static extern NVENCSTATUS NvEncodeAPICreateInstance(ref NV_ENCODE_API_FUNCTION_LIST functionList);
 
     // NvEncOpenEncodeSessionEx

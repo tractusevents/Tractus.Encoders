@@ -3,6 +3,9 @@ using System;
 using System.Runtime.InteropServices;
 
 namespace Tractus.Encoders.Nvidia;
+
+public sealed record CudaDeviceInfo(int Ordinal, int Device, string Name);
+
 public unsafe class NvencEncoderWrapper
 {
     private NvEncDelegateWrapper methods;
@@ -18,8 +21,129 @@ public unsafe class NvencEncoderWrapper
     public bool IsHEVC => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_HEVC_GUID;
     public bool IsAV1 => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_AV1_GUID;
 
-    public NvencEncoderWrapper(
-        int cudaDeviceNumber = 0)
+    public int CudaDeviceOrdinal { get; }
+    public string CudaDeviceName { get; }
+
+    public static NvencEncoderWrapper CreateInitialized(
+        Guid codec,
+        int bitrateBps,
+        int width,
+        int height,
+        int fpsNumerator = 60,
+        int fpsDenominator = 1,
+        int keyFrameIntervalFrames = 1,
+        int? cudaDeviceOrdinal = null)
+    {
+        var requestedOrdinal = cudaDeviceOrdinal ?? GetConfiguredCudaDeviceOrdinal();
+        var candidates = GetCandidateCudaDevices(requestedOrdinal);
+        var errors = new List<string>();
+
+        foreach (var candidate in candidates)
+        {
+            NvencEncoderWrapper? wrapper = null;
+            try
+            {
+                wrapper = new NvencEncoderWrapper(candidate.Ordinal);
+                wrapper.Initialize(codec, bitrateBps, width, height, fpsNumerator, fpsDenominator, keyFrameIntervalFrames);
+                Log.Logger.Information("NVENC initialized on CUDA device {Ordinal}: {Name}", candidate.Ordinal, candidate.Name);
+                return wrapper;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"CUDA device {candidate.Ordinal} ({candidate.Name}): {ex.Message}");
+                Log.Logger.Warning(ex, "NVENC initialization failed on CUDA device {Ordinal}: {Name}", candidate.Ordinal, candidate.Name);
+                wrapper?.Destroy();
+            }
+        }
+
+        throw new Exception("Could not initialize NVENC on any candidate CUDA device. " + string.Join(" ", errors));
+    }
+
+    public static int? GetConfiguredCudaDeviceOrdinal()
+    {
+        var raw = Environment.GetEnvironmentVariable("TRACTUS_NVENC_CUDA_DEVICE");
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            raw = Environment.GetEnvironmentVariable("NVENC_CUDA_DEVICE");
+        }
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        if (int.TryParse(raw, out var ordinal) && ordinal >= 0)
+        {
+            return ordinal;
+        }
+
+        throw new Exception($"Invalid NVENC CUDA device ordinal '{raw}'. Use a zero-based CUDA ordinal.");
+    }
+
+    public static IReadOnlyList<CudaDeviceInfo> GetCudaDevices()
+    {
+        var initCudaResult = CudaNative.cuInit(0);
+        Log.Logger.Debug($"cuInit(0): {initCudaResult}");
+        if (initCudaResult != CUresult.CUDA_SUCCESS)
+        {
+            throw new Exception($"Could not initialize CUDA. Result code: {initCudaResult}");
+        }
+
+        var countResult = CudaNative.cuDeviceGetCount(out var count);
+        Log.Logger.Debug($"cuDeviceGetCount: {countResult}, Count: {count}");
+        if (countResult != CUresult.CUDA_SUCCESS)
+        {
+            throw new Exception($"Could not enumerate CUDA devices. Result code: {countResult}");
+        }
+
+        if (count <= 0)
+        {
+            throw new Exception("CUDA initialized successfully, but no CUDA devices were found.");
+        }
+
+        var devices = new List<CudaDeviceInfo>(count);
+        for (var ordinal = 0; ordinal < count; ordinal++)
+        {
+            var getDeviceResult = CudaNative.cuDeviceGet(out var device, ordinal);
+            Log.Logger.Debug($"cuDeviceGet({ordinal}): {getDeviceResult}, CUDA Device #: {device}");
+            if (getDeviceResult != CUresult.CUDA_SUCCESS)
+            {
+                continue;
+            }
+
+            devices.Add(new CudaDeviceInfo(ordinal, device, CudaNative.GetDeviceName(device)));
+        }
+
+        if (devices.Count == 0)
+        {
+            throw new Exception("CUDA devices were reported, but none could be opened.");
+        }
+
+        return devices;
+    }
+
+    private static IReadOnlyList<CudaDeviceInfo> GetCandidateCudaDevices(int? requestedOrdinal)
+    {
+        var devices = GetCudaDevices();
+        if (!requestedOrdinal.HasValue)
+        {
+            Log.Logger.Information(
+                "NVENC will try {DeviceCount} CUDA device(s). Set TRACTUS_NVENC_CUDA_DEVICE or --nvenccudadevice to force a specific ordinal.",
+                devices.Count);
+            return devices;
+        }
+
+        var device = devices.FirstOrDefault(x => x.Ordinal == requestedOrdinal.Value);
+        if (device is null)
+        {
+            var available = string.Join(", ", devices.Select(x => $"{x.Ordinal} ({x.Name})"));
+            throw new Exception($"Requested CUDA device ordinal {requestedOrdinal.Value} was not found. Available devices: {available}");
+        }
+
+        return [device];
+    }
+
+    public NvencEncoderWrapper(int? cudaDeviceOrdinal = null)
     {
         var nvencList = new NV_ENCODE_API_FUNCTION_LIST()
         {
@@ -36,29 +160,20 @@ public unsafe class NvencEncoderWrapper
 
         this.methods = new NvEncDelegateWrapper(ref nvencList);
 
-        var initCudaResult = CudaNative.cuInit(0);
-        Log.Logger.Debug($"cuInit(0): {initCudaResult}");
-        if(initCudaResult != CUresult.CUDA_SUCCESS)
-        {
-            throw new Exception("Could not init CUDA. Turn on debug logging and try again.");
-        }
+        var requestedOrdinal = cudaDeviceOrdinal ?? GetConfiguredCudaDeviceOrdinal();
+        var deviceInfo = GetCandidateCudaDevices(requestedOrdinal)[0];
 
-        var getDeviceResult = CudaNative.cuDeviceGet(out cudaDeviceNumber, 0);
-        Log.Logger.Debug($"cuDeviceGet: {getDeviceResult}, CUDA Device #: {cudaDeviceNumber}");
-        if (getDeviceResult != CUresult.CUDA_SUCCESS)
-        {
-            throw new Exception("Could not get CUDA device. Turn on debug logging and try again.");
-        }
-
-        var ctxResult = CudaNative.cuCtxCreate(out var pCtx, 0, cudaDeviceNumber);
-        Log.Logger.Debug($"cuCtxCreate: {ctxResult}, pCtx: {pCtx}");
+        var ctxResult = CudaNative.cuCtxCreate(out var pCtx, 0, deviceInfo.Device);
+        Log.Logger.Debug($"cuCtxCreate CUDA ordinal {deviceInfo.Ordinal} ({deviceInfo.Name}): {ctxResult}, pCtx: {pCtx}");
         if (ctxResult != CUresult.CUDA_SUCCESS)
         {
-            throw new Exception("Could not open a CUDA context. Turn on debug logging and try again.");
+            throw new Exception($"Could not open a CUDA context on device {deviceInfo.Ordinal} ({deviceInfo.Name}). Result code: {ctxResult}");
         }
 
         this.functionList = nvencList;
         this.cudaContextPtr = pCtx;
+        this.CudaDeviceOrdinal = deviceInfo.Ordinal;
+        this.CudaDeviceName = deviceInfo.Name;
     }
 
     // TODO: We need to complete the close/dispose the encoder properly so we can test it at launch.
@@ -97,8 +212,10 @@ public unsafe class NvencEncoderWrapper
         if(cudaNvencSessionResult != NVENCSTATUS.NV_ENC_SUCCESS)
         {
             var lastError = this.methods.NvEncGetLastErrorString(encoderPtr);
-            throw new Exception($"Could not start an NVENC session.\r\n\r\nResult code: {cudaNvencSessionResult}\r\n{lastError}");
+            throw new Exception($"Could not start an NVENC session on CUDA device {this.CudaDeviceOrdinal} ({this.CudaDeviceName}).\r\n\r\nResult code: {cudaNvencSessionResult}\r\n{lastError}");
         }
+
+        this.encoderPtr = encoderPtr;
 
         //var getEncodeGuidCount = Marshal.GetDelegateForFunctionPointer<NvEncGetEncodeGuidCount>(nvencList.nvEncGetEncodeGUIDCount);
         var guidCountResult = this.methods.NvEncGetEncodeGUIDCount(encoderPtr, out var guidCount);
@@ -123,8 +240,17 @@ public unsafe class NvencEncoderWrapper
             version = NvEncodeApiVersion.NV_ENC_PRESET_CONFIG_VER,
             presetConfig = new NV_ENC_CONFIG
             {
-                version = NvEncodeApiVersion.NV_ENC_CONFIG_VER
-            }
+                version = NvEncodeApiVersion.NV_ENC_CONFIG_VER,
+                rcParams = new NV_ENC_RC_PARAMS
+                {
+                    temporalLayerQP = new byte[8],
+                    reserved = new uint[4]
+                },
+                reserved = new uint[278],
+                reserved2 = new nint[64]
+            },
+            reserved1 = new uint[255],
+            reserved2 = new nint[64]
         };
 
         var presetConfigResult = this.methods.NvEncGetEncodePresetConfigEx(
@@ -231,7 +357,10 @@ public unsafe class NvencEncoderWrapper
         //presetConfig.presetConfig.frameIntervalP = 1;
         //presetConfig.presetConfig.frameIntervalP = 1;
 
-
+        presetConfig.presetConfig.reserved ??= new uint[278];
+        presetConfig.presetConfig.reserved2 ??= new nint[64];
+        presetConfig.presetConfig.rcParams.temporalLayerQP ??= new byte[8];
+        presetConfig.presetConfig.rcParams.reserved ??= new uint[4];
 
         Marshal.StructureToPtr(presetConfig.presetConfig, pNvEncConfig, false);
 
@@ -299,9 +428,8 @@ public unsafe class NvencEncoderWrapper
         this.bufferFmt = NV_ENC_BUFFER_FORMAT.NV_ENC_BUFFER_FORMAT_NV12;
         this.bitstreamBuffer = createBitstreamBufferParams.bitstreamBuffer;
         this.inputBuffer = createInputBufferParams.inputBuffer;
-        this.encoderPtr = encoderPtr;
 
-        Log.Logger.Debug($"NVENC encoder created - {this.bufferFmt.ToString()} -- {(encoderGuid == EncodeGuids.NV_ENC_CODEC_HEVC_GUID ? "HEVC" : encoderGuid == EncodeGuids.NV_ENC_CODEC_H264_GUID ? "H264" : encoderGuid.ToString())}");
+        Log.Logger.Debug($"NVENC encoder created on CUDA device {this.CudaDeviceOrdinal} ({this.CudaDeviceName}) - {this.bufferFmt.ToString()} -- {(encoderGuid == EncodeGuids.NV_ENC_CODEC_HEVC_GUID ? "HEVC" : encoderGuid == EncodeGuids.NV_ENC_CODEC_H264_GUID ? "H264" : encoderGuid.ToString())}");
     }
 
     private nint inputBuffer;
@@ -331,10 +459,29 @@ public unsafe class NvencEncoderWrapper
 
     public void Destroy()
     {
-        this.methods.NvEncDestroyInputBuffer(this.encoderPtr, this.inputBuffer);
-        this.methods.NvEncDestroyBitstreamBuffer(this.encoderPtr, this.bitstreamBuffer);
-        this.methods.NvEncDestroyEncoder(this.encoderPtr);
-        CudaNative.cuCtxDestroy(this.cudaContextPtr);
+        if (this.encoderPtr != nint.Zero)
+        {
+            if (this.inputBuffer != nint.Zero)
+            {
+                this.methods.NvEncDestroyInputBuffer(this.encoderPtr, this.inputBuffer);
+                this.inputBuffer = nint.Zero;
+            }
+
+            if (this.bitstreamBuffer != nint.Zero)
+            {
+                this.methods.NvEncDestroyBitstreamBuffer(this.encoderPtr, this.bitstreamBuffer);
+                this.bitstreamBuffer = nint.Zero;
+            }
+
+            this.methods.NvEncDestroyEncoder(this.encoderPtr);
+            this.encoderPtr = nint.Zero;
+        }
+
+        if (this.cudaContextPtr != nint.Zero)
+        {
+            CudaNative.cuCtxDestroy(this.cudaContextPtr);
+            this.cudaContextPtr = nint.Zero;
+        }
     }
 
     public NvencBitstreamLockResult Encode(nint nv12Data, bool forceKeyFrame = true)
