@@ -17,6 +17,10 @@ public unsafe class NvencEncoderWrapper
     private int fpsNumerator;
     private int fpsDenominator;
 
+    private readonly uint[] inputLockReservedIntegers = new uint[251];
+    private readonly nint[] inputLockReservedPointers = new nint[64];
+    private readonly nint[] bitstreamLockReservedPointers = new nint[64];
+
     public bool IsH264 => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_H264_GUID;
     public bool IsHEVC => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_HEVC_GUID;
     public bool IsAV1 => this.selectedCodec == EncodeGuids.NV_ENC_CODEC_AV1_GUID;
@@ -486,12 +490,14 @@ public unsafe class NvencEncoderWrapper
 
     public NvencBitstreamLockResult Encode(nint nv12Data, bool forceKeyFrame = true)
     {
+        Array.Clear(this.inputLockReservedIntegers);
+        Array.Clear(this.inputLockReservedPointers);
         var lockInputBufferParams = new NV_ENC_LOCK_INPUT_BUFFER
         {
             version = NvEncodeApiVersion.NV_ENC_LOCK_INPUT_BUFFER_VER,
             inputBuffer = this.inputBuffer,
-            reserved1 = new uint[251],
-            reserved2 = new nint[64]
+            reserved1 = this.inputLockReservedIntegers,
+            reserved2 = this.inputLockReservedPointers
         };
 
         //var lockInputBuffer = Marshal.GetDelegateForFunctionPointer<NvEncLockInputBuffer>(this.nvencList.nvEncLockInputBuffer);
@@ -587,11 +593,12 @@ public unsafe class NvencEncoderWrapper
 
         //var lockBitstream = Marshal.GetDelegateForFunctionPointer<NvEncLockBitstream>(this.nvencList.nvEncLockBitstream);
 
+        Array.Clear(this.bitstreamLockReservedPointers);
         var lockBitstreamParams = new NV_ENC_LOCK_BITSTREAM
         {
             version = NvEncodeApiVersion.NV_ENC_LOCK_BITSTREAM_VER,
             outputBitstream = this.bitstreamBuffer,
-            reserved2 = new nint[64],
+            reserved2 = this.bitstreamLockReservedPointers,
         };
 
         var lockBitstreamResult = this.methods.NvEncLockBitstream(this.encoderPtr, ref lockBitstreamParams);
